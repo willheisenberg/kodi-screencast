@@ -1,4 +1,5 @@
 import AppKit
+import ServiceManagement
 import SwiftUI
 
 enum SettingsKey {
@@ -71,6 +72,9 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.password) private var password = ""
     @AppStorage(SettingsKey.audio) private var audio = true
     @AppStorage(SettingsKey.audioDelay) private var audioDelay = 350
+    // macOS führt die Anmeldeobjekte selbst; der Schalter zeigt deren Stand.
+    @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
+    @State private var launchAtLoginError = ""
 
     var body: some View {
         Form {
@@ -86,9 +90,37 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            Section {
+                Toggle("Beim Anmelden starten", isOn: $launchAtLogin)
+                    .onChange(of: launchAtLogin) { _, enabled in
+                        setLaunchAtLogin(enabled)
+                    }
+                if !launchAtLoginError.isEmpty {
+                    Text(launchAtLoginError)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+            }
         }
         .formStyle(.grouped)
         .frame(width: 420)
         .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func setLaunchAtLogin(_ enabled: Bool) {
+        guard enabled != (SMAppService.mainApp.status == .enabled) else { return }
+        do {
+            if enabled {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+            launchAtLoginError = ""
+        } catch {
+            launchAtLoginError =
+                "macOS hat das abgelehnt: \(error.localizedDescription) Die App am besten "
+                + "in den Ordner Programme legen und es erneut versuchen."
+            launchAtLogin = SMAppService.mainApp.status == .enabled
+        }
     }
 }

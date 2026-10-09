@@ -76,6 +76,7 @@ einmal nach der Bildschirmaufnahme und dem Zugriff aufs lokale Netz.
 
 Die IP-Adresse von Kodi steht in den Einstellungen der App (Menüleisten-
 Symbol > Einstellungen). Die automatische Suche im Netz gibt es dort nicht.
+Dort lässt sich auch einschalten, dass die App beim Anmelden startet.
 
 ## Tests
 

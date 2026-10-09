@@ -31,6 +31,7 @@ einschalten (oder Kodi neu starten), damit der Ton-Dienst neu lädt.
 
     PYTHONPATH=sender python3 -m kodi_screencast start
     PYTHONPATH=sender python3 -m kodi_screencast stop
+    PYTHONPATH=sender python3 -m kodi_screencast status
 
 Verlangt Kodi für die Fernsteuerung eine Anmeldung, die Zugangsdaten über
 `KODI_USER` und `KODI_PASSWORD` oder `--user`/`--password` mitgeben.
@@ -46,6 +47,35 @@ Läuft der Ton dem Bild voraus oder hinterher, mit `--audio-delay` (in ms,
 Standard 350) nachstellen. Kodis Lautstärke wirkt nicht auf die Übertragung,
 die des Fernsehers schon. Solange übertragen wird, gibt Kodi selbst keinen
 Ton aus.
+
+## Plasma-Widget
+
+Startet und beendet die Übertragung per Klick (Plasma 6). Der Sender muss
+dafür als Befehl installiert sein:
+
+    pipx install --system-site-packages -e .
+    kpackagetool6 -t Plasma/Applet -i plasmoid     # Update: -u statt -i
+
+Danach „Kodi-Screencast" als Miniprogramm zur Kontrollleiste hinzufügen. In
+den Einstellungen des Widgets stehen die IP-Adresse von Kodi (leer = im Netz
+suchen) und, falls Kodi eine Anmeldung verlangt, Benutzer und Passwort.
+Schlägt der Start fehl, zeigt der Tooltip die Meldung des Senders.
+
+## Mac-App
+
+Unter `mac/` liegt eine Menüleisten-App für macOS 14 oder neuer, die dasselbe
+Addon auf Kodi benutzt. Sie nimmt Bild und Systemton über macOS selbst auf
+(ScreenCaptureKit, VideoToolbox) und braucht keine weiteren Programme.
+
+    cd mac && ./build-app.sh        # auf einem Mac mit Xcode
+
+Das Ergebnis ist `mac/build/KodiScreencast.zip`. Die App ist nicht von Apple
+signiert: Beim ersten Start blockiert macOS sie, bis man sie unter
+Systemeinstellungen > Datenschutz & Sicherheit freigibt. Danach fragt macOS
+einmal nach der Bildschirmaufnahme und dem Zugriff aufs lokale Netz.
+
+Die IP-Adresse von Kodi steht in den Einstellungen der App (Menüleisten-
+Symbol > Einstellungen). Die automatische Suche im Netz gibt es dort nicht.
 
 ## Tests
 

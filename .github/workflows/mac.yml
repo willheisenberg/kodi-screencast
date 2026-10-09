@@ -1,0 +1,29 @@
+name: Mac-App
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "mac/**"
+      - ".github/workflows/mac.yml"
+
+jobs:
+  build:
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: mac
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tests
+        run: swift test
+      - name: App bauen
+        run: ./build-app.sh
+      - name: Encoder und Muxer ohne Bildschirm prüfen
+        run: build/KodiScreencast.app/Contents/MacOS/KodiScreencast --selftest build/selftest.ts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KodiScreencast
+          path: |
+            mac/build/KodiScreencast.zip
+            mac/build/selftest.ts

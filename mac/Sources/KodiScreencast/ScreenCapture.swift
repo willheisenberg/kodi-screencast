@@ -23,9 +23,7 @@ final class ScreenCapture: NSObject, SCStreamOutput, SCStreamDelegate {
     /// macOS liefert nur bei Bildänderungen neue Bilder. Der Sender holt sich
     /// deshalb im festen Takt das jeweils letzte ab.
     var latestFrame: CVPixelBuffer? {
-        lock.lock()
-        defer { lock.unlock() }
-        return latest
+        lock.withLock { latest }
     }
 
     /// Verkleinert auf maxHeight Zeilen, Seitenverhältnis bleibt, Maße gerade.
@@ -87,9 +85,7 @@ final class ScreenCapture: NSObject, SCStreamOutput, SCStreamDelegate {
         let running = stream
         stream = nil
         try? await running?.stopCapture()
-        lock.lock()
-        latest = nil
-        lock.unlock()
+        lock.withLock { latest = nil }
     }
 
     // MARK: - SCStreamOutput
@@ -103,9 +99,7 @@ final class ScreenCapture: NSObject, SCStreamOutput, SCStreamDelegate {
         case .screen:
             // Leerlauf-Meldungen ohne Bildinhalt überspringen.
             guard let buffer = sampleBuffer.imageBuffer else { return }
-            lock.lock()
-            latest = buffer
-            lock.unlock()
+            lock.withLock { latest = buffer }
         case .audio:
             if let data = Self.pcm(from: sampleBuffer) {
                 onAudio?(data)

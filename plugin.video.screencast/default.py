@@ -10,8 +10,9 @@ from resources.lib import stream
 def main():
     handle = int(sys.argv[1])
     port = stream.port_from_query(sys.argv[2])
+    audio = stream.audio_from_query(sys.argv[2])
 
-    item = xbmcgui.ListItem(label="Screencast", path=stream.stream_url(port))
+    item = xbmcgui.ListItem(label="Screencast", path=stream.stream_url(port, audio))
     item.setMimeType(stream.MIME_TYPE)
     item.setContentLookup(False)
     for key, value in stream.PROPERTIES.items():

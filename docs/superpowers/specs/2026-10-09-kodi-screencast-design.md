@@ -39,7 +39,12 @@ Für einen macOS-Port werden `portal.py` und die Aufnahme-/Encoder-Elemente in
 
 Wird per `Player.Open` mit `plugin://plugin.video.screencast/?port=…`
 aufgerufen und öffnet den Stream über `inputstream.ffmpegdirect` mit
-gesetztem Echtzeit-Flag. Kein eigener Netzwerkdienst auf dem Pi.
+gesetztem Echtzeit-Flag.
+
+Nachtrag: Kodis Player hält mit Ton rund 2 s Puffer (Messung im README).
+Der Ton läuft deshalb am Player vorbei: `service.py` startet während eines
+Screencasts `resources/lib/receiver.py`, das rohes PCM per UDP annimmt und
+über `aplay` ausgibt, und nimmt Kodi so lange das Tongerät weg.
 
 ## Datenfluss
 
@@ -47,8 +52,8 @@ gesetztem Echtzeit-Flag. Kein eigener Netzwerkdienst auf dem Pi.
 2. Sender holt den Bildschirm über das Portal. Beim ersten Mal fragt KDE nach
    dem Bildschirm, danach wird die Auswahl über ein Restore-Token gemerkt.
 3. Pipeline: PipeWire → Skalierung auf max. 1080 Zeilen → HEVC (VAAPI, keine
-   B-Frames, Keyframe jede Sekunde) + Systemton als AAC → MPEG-TS → UDP an
-   den Pi.
+   B-Frames, Keyframe jede Sekunde) → MPEG-TS → UDP an den Pi. Der
+   Systemton geht getrennt davon als rohes PCM per UDP an den Ton-Empfänger.
 4. Sender ruft `Player.Open` auf, Kodi spielt `udp://@:<port>`.
 5. Bei `stop`, Strg+C oder Ende der Freigabe: `Player.Stop`, sofern noch der
    eigene Stream läuft.

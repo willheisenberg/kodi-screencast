@@ -16,8 +16,11 @@ class RpcError(KodiError):
     """Kodi hat den Aufruf angenommen, aber mit einem Fehler beantwortet."""
 
 
-def plugin_url(port):
-    return f"plugin://{ADDON_ID}/?port={port}"
+def plugin_url(port, audio_port=None, audio_delay_ms=0):
+    url = f"plugin://{ADDON_ID}/?port={port}"
+    if audio_port:
+        url += f"&audio_port={audio_port}&audio_delay={audio_delay_ms}"
+    return url
 
 
 class Kodi:
@@ -70,8 +73,28 @@ class Kodi:
             return False
         return details["addon"]["enabled"]
 
-    def play(self, stream_port):
-        self.call("Player.Open", {"item": {"file": plugin_url(stream_port)}})
+    def play(self, stream_port, audio_port=None, audio_delay_ms=0):
+        url = plugin_url(stream_port, audio_port, audio_delay_ms)
+        self.call("Player.Open", {"item": {"file": url}})
+
+    def playback_time(self, stream_port):
+        """Sekunden, die der eigene Stream schon spielt; None, solange er nicht läuft."""
+        for player in self.call("Player.GetActivePlayers"):
+            item = self.call(
+                "Player.GetItem",
+                {"playerid": player["playerid"], "properties": ["file"]},
+            )["item"]
+            if not is_own_stream(item.get("file", ""), stream_port):
+                continue
+            time = self.call(
+                "Player.GetProperties",
+                {"playerid": player["playerid"], "properties": ["time"]},
+            )["time"]
+            return (
+                time["hours"] * 3600 + time["minutes"] * 60 + time["seconds"]
+                + time["milliseconds"] / 1000
+            )
+        return None
 
     def stop(self, stream_port):
         """Stoppt die Wiedergabe nur, wenn noch der eigene Stream läuft."""
@@ -85,4 +108,4 @@ class Kodi:
 
 
 def is_own_stream(file, stream_port):
-    return file.startswith(f"udp://@:{stream_port}") or file == plugin_url(stream_port)
+    return file.startswith((f"udp://@:{stream_port}?", plugin_url(stream_port)))

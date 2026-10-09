@@ -24,3 +24,29 @@ def test_stream_url_listens_on_the_port():
 def test_stream_is_marked_as_realtime_for_ffmpegdirect():
     assert stream.PROPERTIES["inputstream"] == "inputstream.ffmpegdirect"
     assert stream.PROPERTIES["inputstream.ffmpegdirect.is_realtime_stream"] == "true"
+
+
+def test_audio_settings_are_read_from_the_plugin_query():
+    assert stream.audio_from_query("?port=6000&audio_port=6001&audio_delay=150") == (6001, 150)
+    assert stream.audio_from_query("?port=6000&audio_port=6001") == (6001, stream.DEFAULT_AUDIO_DELAY_MS)
+    assert stream.audio_from_query("?port=6000") is None
+
+
+def test_stream_url_carries_the_audio_settings_for_the_service():
+    url = stream.stream_url(6000, (6001, 150))
+    assert stream.audio_of_playing(url) == (6001, 150)
+    assert stream.audio_of_playing(stream.stream_url(6000)) is None
+
+
+def test_other_playing_files_have_no_screencast_audio():
+    assert stream.audio_of_playing("") is None
+    assert stream.audio_of_playing("/storage/videos/film.mkv?audio_port=6001") is None
+    assert stream.audio_of_playing("plugin://plugin.video.screencast/?port=6000&audio_port=6001") == (
+        6001, stream.DEFAULT_AUDIO_DELAY_MS,
+    )
+
+
+def test_alsa_device_uses_the_card_kodi_is_set_to():
+    assert stream.alsa_device("ALSA:hdmi:CARD=vc4hdmi0,DEV=0|vc4-hdmi-0 (vc4hdmi0)") == "default:CARD=vc4hdmi0"
+    assert stream.alsa_device("PULSE:Default") == "default"
+    assert stream.alsa_device("") == "default"

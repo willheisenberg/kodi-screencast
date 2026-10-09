@@ -26,8 +26,16 @@ def test_build_sends_hevc_without_b_frames_to_the_target():
     assert "pulsesrc" not in description
 
 
-def test_build_adds_audio_branch_when_enabled():
-    settings = pipeline.Settings(host="10.0.0.5", audio_device="sink.monitor")
+def test_build_sends_audio_as_its_own_raw_stream():
+    settings = pipeline.Settings(host="10.0.0.5", audio_device="sink.monitor", audio_port=6001)
     description = pipeline.build(settings, fd=7, node_id=42, src_width=1920, src_height=1080)
     assert "pulsesrc device=sink.monitor" in description
-    assert description.count("mux.") == 2
+    assert "format=S16LE,rate=48000,channels=2 ! udpsink host=10.0.0.5 port=6001" in description
+    assert description.count("mux.") == 1
+
+
+def test_build_names_the_elements_for_the_catch_up_pause():
+    settings = pipeline.Settings(host="10.0.0.5", audio=False)
+    description = pipeline.build(settings, fd=7, node_id=42, src_width=1920, src_height=1080)
+    assert f"latency=0 ! valve name={pipeline.GATE} ! udpsink" in description
+    assert f"vah265enc name={pipeline.ENCODER}" in description

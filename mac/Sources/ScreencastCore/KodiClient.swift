@@ -106,6 +106,35 @@ public final class KodiClient {
         return nil
     }
 
+    /// Titel dessen, was Kodi gerade außer dem eigenen Stream spielt, sonst nil.
+    public func otherPlayback(port: Int) async throws -> String? {
+        guard let players = try await call("Player.GetActivePlayers") as? [[String: Any]] else {
+            return nil
+        }
+        for player in players {
+            guard let id = player["playerid"] as? Int else { continue }
+            let params: [String: Any] = ["playerid": id, "properties": ["file", "title"]]
+            let answer = try await call("Player.GetItem", params) as? [String: Any]
+            guard let item = answer?["item"] as? [String: Any] else { continue }
+            let file = item["file"] as? String ?? ""
+            if !Self.isOwnStream(file, port: port) {
+                return Self.title(of: item)
+            }
+        }
+        return nil
+    }
+
+    /// Titel, sonst Beschriftung, sonst der Dateiname.
+    static func title(of item: [String: Any]) -> String {
+        for key in ["title", "label"] {
+            if let text = item[key] as? String, !text.isEmpty {
+                return text
+            }
+        }
+        let file = item["file"] as? String ?? ""
+        return file.split(separator: "/").last.map(String.init) ?? file
+    }
+
     /// Sekunden, die der eigene Stream schon spielt; nil, solange er nicht läuft.
     public func playbackTime(port: Int) async throws -> Double? {
         guard let id = try await ownPlayer(port: port) else { return nil }

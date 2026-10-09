@@ -1,3 +1,4 @@
+import AppKit
 import CoreMedia
 import Foundation
 import ScreencastCore
@@ -47,6 +48,12 @@ final class CastSession: ObservableObject {
         guard !isActive else { return }
         state = .starting
         Task {
+            // Läuft auf Kodi schon etwas, erst nachfragen. Ist Kodi nicht
+            // erreichbar, meldet das gleich der eigentliche Start.
+            if let title = await interrupted(by: settings), !confirmInterrupting(title) {
+                state = .idle
+                return
+            }
             do {
                 try await run(settings)
                 state = .running
@@ -63,6 +70,25 @@ final class CastSession: ObservableObject {
             await shutDown()
             state = .idle
         }
+    }
+
+    private func interrupted(by settings: CastSettings) async -> String? {
+        let host = settings.host.trimmingCharacters(in: .whitespaces)
+        guard !host.isEmpty,
+            let kodi = try? KodiClient(host: host, user: settings.user, password: settings.password)
+        else { return nil }
+        return try? await kodi.otherPlayback(port: CastSettings.videoPort)
+    }
+
+    private func confirmInterrupting(_ title: String) -> Bool {
+        let alert = NSAlert()
+        alert.messageText = "Auf Kodi läuft gerade „\(title)“."
+        alert.informativeText =
+            "Für die Übertragung unterbrechen? Danach läuft es an derselben Stelle weiter."
+        alert.addButton(withTitle: "Unterbrechen")
+        alert.addButton(withTitle: "Abbrechen")
+        NSApp.activate(ignoringOtherApps: true)
+        return alert.runModal() == .alertFirstButtonReturn
     }
 
     private func run(_ settings: CastSettings) async throws {

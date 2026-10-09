@@ -105,4 +105,10 @@ final class KodiClientTests: XCTestCase {
         XCTAssertFalse(KodiClient.isOwnStream("udp://@:5005?x=1", port: 5004))
         XCTAssertFalse(KodiClient.isOwnStream("/storage/film.mkv", port: 5004))
     }
+
+    func testTitleFallsBackToLabelThenFileName() {
+        XCTAssertEqual(KodiClient.title(of: ["title": "Send Help", "label": "x"]), "Send Help")
+        XCTAssertEqual(KodiClient.title(of: ["title": "", "label": "Send Help"]), "Send Help")
+        XCTAssertEqual(KodiClient.title(of: ["file": "/media/clip.mkv"]), "clip.mkv")
+    }
 }

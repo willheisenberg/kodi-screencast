@@ -65,18 +65,49 @@ Schlägt der Start fehl, zeigt der Tooltip die Meldung des Senders.
 
 Unter `mac/` liegt eine Menüleisten-App für macOS 14 oder neuer, die dasselbe
 Addon auf Kodi benutzt. Sie nimmt Bild und Systemton über macOS selbst auf
-(ScreenCaptureKit, VideoToolbox) und braucht keine weiteren Programme.
+(ScreenCaptureKit, VideoToolbox) und braucht keine weiteren Programme. Auf
+einem echten Mac ist sie noch nicht ausprobiert.
+
+### Herunterladen
+
+GitHub baut die App bei jeder Änderung. Unter
+[Actions > Mac-App](https://github.com/willheisenberg/kodi-screencast/actions/workflows/mac.yml)
+den neuesten Lauf öffnen und unten bei „Artifacts" das Paket `KodiScreencast`
+laden (dafür muss man bei GitHub angemeldet sein). Darin liegt
+`KodiScreencast.zip`; die Datei `selftest.ts` wird nicht gebraucht.
+
+`KodiScreencast.zip` erst auf dem Mac entpacken. Wird sie unter Linux oder
+Windows entpackt und der Ordner kopiert, können Ausführungsrecht und Signatur
+verloren gehen, und die App startet nicht.
+
+### Einrichten
+
+1. `KodiScreencast.zip` per Doppelklick entpacken und die App in den Ordner
+   „Programme" ziehen.
+2. Die App öffnen. Sie ist nicht von Apple signiert, macOS blockiert sie
+   deshalb zunächst: unter Systemeinstellungen > Datenschutz & Sicherheit
+   „Dennoch öffnen" wählen.
+3. In der Menüleiste oben rechts erscheint ein Fernseher-Symbol; im Dock
+   taucht die App nicht auf. Über das Symbol die Einstellungen öffnen und die
+   IP-Adresse von Kodi eintragen, dazu Benutzer und Passwort, falls Kodi eine
+   Anmeldung verlangt. Die automatische Suche im Netz gibt es hier nicht.
+4. „Übertragung starten" wählen und die Abfragen zu Bildschirmaufnahme und
+   lokalem Netz erlauben. Nach der Freigabe der Bildschirmaufnahme die App
+   einmal beenden und neu öffnen.
+
+Der Mac muss im selben Netz sein wie Kodi. Liegt der Ton nicht auf dem Bild,
+in den Einstellungen die Verzögerung nachstellen.
+
+Nach einem Neustart des Macs ist das Symbol erst wieder da, wenn die App
+läuft. Der Schalter „Beim Anmelden starten" in den Einstellungen erledigt
+das; nimmt macOS ihn nicht an, die App unter Systemeinstellungen > Allgemein >
+Anmeldeobjekte von Hand eintragen.
+
+### Selbst bauen
 
     cd mac && ./build-app.sh        # auf einem Mac mit Xcode
 
-Das Ergebnis ist `mac/build/KodiScreencast.zip`. Die App ist nicht von Apple
-signiert: Beim ersten Start blockiert macOS sie, bis man sie unter
-Systemeinstellungen > Datenschutz & Sicherheit freigibt. Danach fragt macOS
-einmal nach der Bildschirmaufnahme und dem Zugriff aufs lokale Netz.
-
-Die IP-Adresse von Kodi steht in den Einstellungen der App (Menüleisten-
-Symbol > Einstellungen). Die automatische Suche im Netz gibt es dort nicht.
-Dort lässt sich auch einschalten, dass die App beim Anmelden startet.
+Das Ergebnis ist `mac/build/KodiScreencast.zip`.
 
 ## Tests
 

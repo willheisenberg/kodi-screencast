@@ -186,6 +186,16 @@ def stop(_args):
         sys.exit("Es läuft keine Übertragung.")
 
 
+def status(_args):
+    """Exit-Code 0, wenn eine Übertragung läuft, sonst 1."""
+    try:
+        os.kill(int(PID_FILE.read_text()), 0)
+    except (OSError, ValueError):
+        print("Es läuft keine Übertragung.")
+        sys.exit(1)
+    print("Übertragung läuft.")
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="kodi-screencast")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -207,6 +217,7 @@ def main(argv=None):
     start_parser.set_defaults(run=start)
 
     commands.add_parser("stop", help="laufende Übertragung beenden").set_defaults(run=stop)
+    commands.add_parser("status", help="zeigt, ob übertragen wird").set_defaults(run=status)
 
     args = parser.parse_args(argv)
     try:

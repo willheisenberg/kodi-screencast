@@ -1,4 +1,7 @@
+import os
 import threading
+
+import pytest
 
 from kodi_screencast import cli, pipeline
 from kodi_screencast.kodi import KodiError
@@ -52,3 +55,14 @@ def test_catch_up_does_nothing_when_the_cast_ends_first():
     stopped.set()
     cli.catch_up(FakePipe(log), FakeKodi([None]), 5004, stopped, log.append)
     assert log == []
+
+
+def test_status_tells_by_exit_code_whether_a_cast_runs(tmp_path, monkeypatch):
+    pid_file = tmp_path / "kodi-screencast.pid"
+    monkeypatch.setattr(cli, "PID_FILE", pid_file)
+    with pytest.raises(SystemExit) as stopped:
+        cli.main(["status"])
+    assert stopped.value.code == 1
+
+    pid_file.write_text(str(os.getpid()))
+    cli.main(["status"])

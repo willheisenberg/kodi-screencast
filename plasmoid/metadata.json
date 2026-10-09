@@ -1,0 +1,16 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Id": "io.github.willheisenberg.kodiscreencast",
+        "Name": "Kodi Screencast",
+        "Name[de]": "Kodi-Screencast",
+        "Description": "Mirror this screen to Kodi",
+        "Description[de]": "Spiegelt diesen Bildschirm auf Kodi",
+        "Icon": "video-television",
+        "Category": "Multimedia",
+        "Version": "0.1.0",
+        "License": "MIT",
+        "Authors": [{ "Name": "willheisenberg" }]
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

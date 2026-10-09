@@ -1,0 +1,19 @@
+[project]
+name = "kodi-screencast"
+version = "0.1.0"
+description = "Bildschirm per Befehl auf Kodi spiegeln"
+requires-python = ">=3.11"
+
+[project.scripts]
+kodi-screencast = "kodi_screencast.cli:main"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["sender"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["sender", "plugin.video.screencast"]

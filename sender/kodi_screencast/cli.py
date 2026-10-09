@@ -186,6 +186,15 @@ def stop(_args):
         sys.exit("Es läuft keine Übertragung.")
 
 
+def playing(args):
+    """Nennt, was Kodi gerade spielt; Exit-Code 0 nur, wenn dort etwas läuft."""
+    host, rpc_port = find_kodi(args)
+    title = Kodi(host, rpc_port, args.user, args.password).other_playback(args.port)
+    if title is None:
+        sys.exit(1)
+    print(title)
+
+
 def status(_args):
     """Exit-Code 0, wenn eine Übertragung läuft, sonst 1."""
     try:
@@ -200,13 +209,16 @@ def main(argv=None):
     parser = argparse.ArgumentParser(prog="kodi-screencast")
     commands = parser.add_subparsers(dest="command", required=True)
 
+    def kodi_arguments(command):
+        command.add_argument("--host", help="Adresse von Kodi (sonst Suche im Netz)")
+        command.add_argument("--rpc-port", type=int, default=8080,
+                             help="HTTP-Port von Kodi, nur mit --host (Standard 8080)")
+        command.add_argument("--user", default=os.environ.get("KODI_USER", ""))
+        command.add_argument("--password", default=os.environ.get("KODI_PASSWORD", ""))
+        command.add_argument("--port", type=int, default=5004, help="UDP-Port für den Stream")
+
     start_parser = commands.add_parser("start", help="Bildschirm an Kodi übertragen")
-    start_parser.add_argument("--host", help="Adresse von Kodi (sonst Suche im Netz)")
-    start_parser.add_argument("--rpc-port", type=int, default=8080,
-                              help="HTTP-Port von Kodi, nur mit --host (Standard 8080)")
-    start_parser.add_argument("--user", default=os.environ.get("KODI_USER", ""))
-    start_parser.add_argument("--password", default=os.environ.get("KODI_PASSWORD", ""))
-    start_parser.add_argument("--port", type=int, default=5004, help="UDP-Port für den Stream")
+    kodi_arguments(start_parser)
     start_parser.add_argument("--fps", type=int, default=30)
     start_parser.add_argument("--height", type=int, default=1080, help="maximale Bildhöhe")
     start_parser.add_argument("--bitrate", type=int, default=8000, help="Video-Bitrate in kbit/s")
@@ -218,6 +230,10 @@ def main(argv=None):
 
     commands.add_parser("stop", help="laufende Übertragung beenden").set_defaults(run=stop)
     commands.add_parser("status", help="zeigt, ob übertragen wird").set_defaults(run=status)
+    playing_parser = commands.add_parser(
+        "playing", help="zeigt, was Kodi gerade spielt und was eine Übertragung unterbräche")
+    kodi_arguments(playing_parser)
+    playing_parser.set_defaults(run=playing)
 
     args = parser.parse_args(argv)
     try:

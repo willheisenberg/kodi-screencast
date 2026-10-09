@@ -77,6 +77,18 @@ class Kodi:
         url = plugin_url(stream_port, audio_port, audio_delay_ms)
         self.call("Player.Open", {"item": {"file": url}})
 
+    def other_playback(self, stream_port):
+        """Titel dessen, was Kodi gerade außer dem eigenen Stream spielt, sonst None."""
+        for player in self.call("Player.GetActivePlayers"):
+            item = self.call(
+                "Player.GetItem",
+                {"playerid": player["playerid"], "properties": ["file", "title"]},
+            )["item"]
+            file = item.get("file", "")
+            if not is_own_stream(file, stream_port):
+                return item.get("title") or item.get("label") or file.rsplit("/", 1)[-1]
+        return None
+
     def playback_time(self, stream_port):
         """Sekunden, die der eigene Stream schon spielt; None, solange er nicht läuft."""
         for player in self.call("Player.GetActivePlayers"):

@@ -52,9 +52,16 @@ def stream_url(port, audio=None):
     return url
 
 
+def is_screencast(file):
+    """Kodi spielt gerade einen Stream dieses Addons (aufgelöst oder als Plugin-Adresse)."""
+    if file.startswith(f"plugin://{ADDON_ID}/"):
+        return True
+    return file.startswith("udp://@:") and "overrun_nonfatal=1&fifo_size=50000" in file
+
+
 def audio_of_playing(file):
     """Ton-Angaben, wenn Kodi gerade einen Stream dieses Addons spielt, sonst None."""
-    if not file.startswith(("udp://@:", f"plugin://{ADDON_ID}/")):
+    if not is_screencast(file):
         return None
     try:
         return audio_from_query(file)

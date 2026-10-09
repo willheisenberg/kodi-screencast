@@ -78,6 +78,24 @@ def test_stop_only_stops_the_own_stream(server):
     assert calls[-1][:2] == ("Player.Stop", {"playerid": 1})
 
 
+def test_other_playback_names_what_a_cast_would_interrupt(server):
+    port, _, answers = server
+    answers["Player.GetActivePlayers"] = {"result": []}
+    assert Kodi("127.0.0.1", port).other_playback(5004) is None
+
+    answers["Player.GetActivePlayers"] = {"result": [{"playerid": 1, "type": "video"}]}
+    answers["Player.GetItem"] = {"result": {"item": {"file": plugin_url(5004), "label": "Screencast"}}}
+    assert Kodi("127.0.0.1", port).other_playback(5004) is None
+
+    answers["Player.GetItem"] = {
+        "result": {"item": {"file": "/media/film.mkv", "title": "", "label": "Send Help"}}
+    }
+    assert Kodi("127.0.0.1", port).other_playback(5004) == "Send Help"
+
+    answers["Player.GetItem"] = {"result": {"item": {"file": "/media/clip.mkv"}}}
+    assert Kodi("127.0.0.1", port).other_playback(5004) == "clip.mkv"
+
+
 def test_playback_time_only_counts_the_own_stream(server):
     port, _, answers = server
     answers["Player.GetActivePlayers"] = {"result": []}

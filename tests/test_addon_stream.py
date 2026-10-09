@@ -50,3 +50,12 @@ def test_alsa_device_uses_the_card_kodi_is_set_to():
     assert stream.alsa_device("ALSA:hdmi:CARD=vc4hdmi0,DEV=0|vc4-hdmi-0 (vc4hdmi0)") == "default:CARD=vc4hdmi0"
     assert stream.alsa_device("PULSE:Default") == "default"
     assert stream.alsa_device("") == "default"
+
+
+def test_only_own_streams_count_as_screencast():
+    assert stream.is_screencast(stream.stream_url(6000))
+    assert stream.is_screencast(stream.stream_url(6000, (6001, 150)))
+    assert stream.is_screencast("plugin://plugin.video.screencast/?port=6000")
+    assert not stream.is_screencast("udp://@:1234")
+    assert not stream.is_screencast("/storage/videos/film.mkv")
+    assert not stream.is_screencast("")

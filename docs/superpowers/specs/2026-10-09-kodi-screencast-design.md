@@ -75,3 +75,32 @@ HEVC ist gesetzt, weil der Pi 5 nur HEVC in Hardware dekodiert.
 - Latenz: laufende Stoppuhr auf dem Rechner, Foto von Rechner und Fernseher
   zusammen, Differenz ablesen. UDP und zum Vergleich HTTP messen, Ergebnis im
   README festhalten.
+
+## Nachtrag: Latenz und der Weg des Tons
+
+Die Werte stammen aus Kodis Debug-Log und den Pufferständen, nicht aus einer
+Messung mit Stoppuhr am Fernseher: Bild etwa 0,3 s, Ton etwa 0,1 s plus die
+eingestellte Verzögerung. Im Sender selbst entstehen rund 0,2 s.
+
+Kodis Player allein kommt mit Ton nicht unter rund 2 s:
+
+- Er startet das Bild 1,2 s hinter dem ersten Tonpaket, um den Tonpuffer zu
+  füllen.
+- Bei Live-Streams mit Ton spielt er 5 % langsamer, sobald der Tonpuffer
+  knapp wird, und füllt ihn so wieder auf.
+- Was während des Starts ankommt (Stream-Analyse rund 0,9 s), bleibt als
+  Rückstand im Puffer.
+
+Deshalb bekommt Kodi nur das Bild. Den Start-Rückstand baut der Sender mit
+einer Sendepause von 2 s ab: Kodis Puffer läuft leer, und den Zeitsprung
+danach rechnet Kodi heraus. Mit Tonspur im Strom hilft das kaum (etwa 0,4 s),
+weil Kodi den Puffer dann wieder auffüllt.
+
+Der Ton geht als rohes PCM per UDP an `resources/lib/receiver.py`, das ihn
+über `aplay` ausgibt. Der Dienst des Addons startet den Empfänger, sobald ein
+Screencast mit Ton läuft, und nimmt Kodi für die Dauer das Tongerät weg.
+
+Verworfen wurden: die Sendepause mit Tonspur im Strom, eine kurzzeitig
+schnellere Wiedergabe (lehnt Kodi bei Live-Streams ab), Kodis eingebauter
+Demuxer statt `inputstream.ffmpegdirect` (analysiert genauso lange) und
+H.264 statt HEVC (spart nur etwa 0,2 s, auf dem Pi 5 ohne Hardware-Dekoder).

@@ -1,139 +1,151 @@
-<p align="center"><img src="docs/img/banner.svg" alt="kodi-screencast: Bildschirm und Ton per Klick auf Kodi spiegeln" width="100%"></p>
+<p align="center"><img src="docs/img/banner.svg" alt="kodi-screencast: mirror your screen and sound to Kodi with one click" width="100%"></p>
 
 # kodi-screencast
 
-Spiegelt den Bildschirm eines Linux-Rechners (KDE/Wayland) mit einem Befehl
-auf Kodi, ohne dass Kodi beendet wird. Das Bild spielt Kodi mit seinem
-eigenen Player ab, der Ton läuft daran vorbei direkt auf die Soundkarte.
+Mirrors the screen and system sound of a Linux PC or a Mac to Kodi, with one
+click or one command. Kodi keeps running as usual and shows the screen like a
+video.
 
-Entwurf: [docs/superpowers/specs/2026-10-09-kodi-screencast-design.md](docs/superpowers/specs/2026-10-09-kodi-screencast-design.md)
+The interface of the Plasma widget and the Mac app is currently German only;
+the labels below are quoted as they appear on screen.
 
-## Voraussetzungen
+## What you need
 
-Rechner (Arch):
+The project has two parts, which must be on the same network:
 
-    sudo pacman -S gst-plugin-pipewire gst-plugin-va gst-plugins-bad gst-plugins-good python-gobject avahi
+| Part | Where | Status |
+|---|---|---|
+| Add-on `plugin.video.screencast` | on Kodi | tested with LibreELEC 12.2.1 on a Pi 5 |
+| Sender for Linux | KDE Plasma 6 on Wayland | tested on Arch with Intel graphics |
+| Sender for macOS | macOS 14 or later | builds, not yet tried on a real Mac |
 
-Kodi (getestet mit LibreELEC 12.2.1 auf einem Pi 5):
+The add-on is always required, plus one of the two senders.
 
-- Addon `inputstream.ffmpegdirect` installiert
-- Einstellungen > Dienste > Steuerung: Fernsteuerung über HTTP erlaubt
-- Einstellungen > Dienste > Allgemein: Zeroconf an (nur für die automatische Suche)
+The sender sends the picture to UDP port 5004 and the sound to UDP port 5005
+on Kodi, and controls Kodi through its HTTP interface (port 8080). A firewall
+in between has to let that through.
 
-## Addon auf Kodi installieren
+## Installing the add-on on Kodi
+
+Set up once in Kodi:
+
+- Install the add-on `inputstream.ffmpegdirect`
+- Settings > Services > Control: allow remote control via HTTP
+- Settings > Services > General: enable Zeroconf (only needed for the Linux
+  sender's automatic discovery)
+
+Then copy the add-on, shown here for LibreELEC:
 
     scp -r plugin.video.screencast root@<KODI_IP>:/storage/.kodi/addons/
     ssh root@<KODI_IP> 'kodi-send --action="UpdateLocalAddons"'
 
-Danach das Addon in Kodi unter Addons > Benutzer-Addons > Video-Addons
-einmal aktivieren. Nach einem Update das Addon dort aus- und wieder
-einschalten (oder Kodi neu starten), damit der Ton-Dienst neu lädt.
+Afterwards enable the add-on once in Kodi under Add-ons > My add-ons > Video
+add-ons. After an update, disable and re-enable it there (or restart Kodi) so
+the sound service reloads.
 
-## Benutzen
+On other Kodi systems the add-on folder is in a different place. Sound needs
+`python3` and `aplay` (ALSA) there; this has only been tried with LibreELEC.
 
-    PYTHONPATH=sender python3 -m kodi_screencast start
-    PYTHONPATH=sender python3 -m kodi_screencast stop
-    PYTHONPATH=sender python3 -m kodi_screencast status
+## Linux
 
-Verlangt Kodi für die Fernsteuerung eine Anmeldung, die Zugangsdaten über
-`KODI_USER` und `KODI_PASSWORD` oder `--user`/`--password` mitgeben.
+### Install
 
-Beim ersten Start fragt KDE, welcher Bildschirm freigegeben wird. Die Auswahl
-wird gemerkt. `start --help` zeigt die Optionen (Zieladresse, Bitrate,
-Bildhöhe, ohne Ton).
+Packages (Arch):
 
-Kurz nach dem Start steht das Bild einmal für etwa zwei Sekunden; damit
-wird Kodis Start-Rückstand abgebaut (siehe Latenz).
+    sudo pacman -S gst-plugin-pipewire gst-plugin-va gst-plugins-bad gst-plugins-good python-gobject avahi python-pipx
 
-Läuft der Ton dem Bild voraus oder hinterher, mit `--audio-delay` (in ms,
-Standard 350) nachstellen. Kodis Lautstärke wirkt nicht auf die Übertragung,
-die des Fernsehers schon. Solange übertragen wird, gibt Kodi selbst keinen
-Ton aus.
-
-## Plasma-Widget
-
-Startet und beendet die Übertragung per Klick (Plasma 6). Der Sender muss
-dafür als Befehl installiert sein:
+The sender encodes HEVC through VA-API; the graphics card has to support
+that. Then, from the project folder:
 
     pipx install --system-site-packages -e .
-    kpackagetool6 -t Plasma/Applet -i plasmoid     # Update: -u statt -i
 
-Danach „Kodi-Screencast" als Miniprogramm zur Kontrollleiste hinzufügen. In
-den Einstellungen des Widgets stehen die IP-Adresse von Kodi (leer = im Netz
-suchen) und, falls Kodi eine Anmeldung verlangt, Benutzer und Passwort.
-Schlägt der Start fehl, zeigt der Tooltip die Meldung des Senders.
+### Plasma widget
 
-## Mac-App
+    kpackagetool6 -t Plasma/Applet -i plasmoid     # to update: -u instead of -i
 
-Unter `mac/` liegt eine Menüleisten-App für macOS 14 oder neuer, die dasselbe
-Addon auf Kodi benutzt. Sie nimmt Bild und Systemton über macOS selbst auf
-(ScreenCaptureKit, VideoToolbox) und braucht keine weiteren Programme. Auf
-einem echten Mac ist sie noch nicht ausprobiert.
+Add "Kodi-Screencast" as a widget to the panel. Its settings hold Kodi's IP
+address (empty = search the network) and, if Kodi asks for a login, user name
+and password. One click on the icon starts mirroring, another one stops it.
+If starting fails, the tooltip shows the sender's error message.
 
-### Herunterladen
+### Command line
 
-GitHub baut die App bei jeder Änderung. Unter
+    kodi-screencast start --host <KODI_IP>
+    kodi-screencast stop
+    kodi-screencast status
+
+Without `--host` the sender searches the network for Kodi. If Kodi asks for a
+login, pass the credentials through `KODI_USER` and `KODI_PASSWORD` or
+`--user`/`--password`. `start --help` lists all options (bitrate, picture
+height, no sound, ports).
+
+On first start KDE asks which screen to share. The choice is remembered.
+
+## macOS
+
+The menu bar app under `mac/` captures picture and system sound through macOS
+itself and needs no other software.
+
+### Download
+
+GitHub builds the app on every change. Open the latest run under
 [Actions > Mac-App](https://github.com/willheisenberg/kodi-screencast/actions/workflows/mac.yml)
-den neuesten Lauf öffnen und unten bei „Artifacts" das Paket `KodiScreencast`
-laden (dafür muss man bei GitHub angemeldet sein). Darin liegt
-`KodiScreencast.zip`; die Datei `selftest.ts` wird nicht gebraucht.
+and download the `KodiScreencast` package under "Artifacts" at the bottom
+(you need to be signed in to GitHub). It contains `KodiScreencast.zip`; the
+file `selftest.ts` is not needed.
 
-`KodiScreencast.zip` erst auf dem Mac entpacken. Wird sie unter Linux oder
-Windows entpackt und der Ordner kopiert, können Ausführungsrecht und Signatur
-verloren gehen, und die App startet nicht.
+Unpack `KodiScreencast.zip` on the Mac only. If it is unpacked on Linux or
+Windows and the folder is copied over, the executable permission and the
+signature can get lost, and the app will not start.
 
-### Einrichten
+### Set up
 
-1. `KodiScreencast.zip` per Doppelklick entpacken und die App in den Ordner
-   „Programme" ziehen.
-2. Die App öffnen. Sie ist nicht von Apple signiert, macOS blockiert sie
-   deshalb zunächst: unter Systemeinstellungen > Datenschutz & Sicherheit
-   „Dennoch öffnen" wählen.
-3. In der Menüleiste oben rechts erscheint ein Fernseher-Symbol; im Dock
-   taucht die App nicht auf. Über das Symbol die Einstellungen öffnen und die
-   IP-Adresse von Kodi eintragen, dazu Benutzer und Passwort, falls Kodi eine
-   Anmeldung verlangt. Die automatische Suche im Netz gibt es hier nicht.
-4. „Übertragung starten" wählen und die Abfragen zu Bildschirmaufnahme und
-   lokalem Netz erlauben. Nach der Freigabe der Bildschirmaufnahme die App
-   einmal beenden und neu öffnen.
+1. Double-click `KodiScreencast.zip` to unpack it and drag the app into the
+   Applications folder.
+2. Open the app. It is not signed by Apple, so macOS blocks it at first:
+   choose "Open Anyway" under System Settings > Privacy & Security.
+3. A TV icon appears in the menu bar at the top right; the app does not show
+   up in the Dock. Open "Einstellungen …" (settings) from the icon and enter
+   Kodi's IP address, plus user name and password if Kodi asks for a login.
+   There is no automatic network search here.
+4. Choose "Übertragung starten" (start mirroring) and allow the prompts for
+   screen recording and local network access. After granting screen
+   recording, quit the app once and open it again.
 
-Der Mac muss im selben Netz sein wie Kodi. Liegt der Ton nicht auf dem Bild,
-in den Einstellungen die Verzögerung nachstellen.
+After restarting the Mac, the icon is only back once the app is running. The
+switch "Beim Anmelden starten" (launch at login) in the settings takes care
+of that; if macOS does not accept it, add the app by hand under System
+Settings > General > Login Items.
 
-Nach einem Neustart des Macs ist das Symbol erst wieder da, wenn die App
-läuft. Der Schalter „Beim Anmelden starten" in den Einstellungen erledigt
-das; nimmt macOS ihn nicht an, die App unter Systemeinstellungen > Allgemein >
-Anmeldeobjekte von Hand eintragen.
+### Build it yourself
 
-### Selbst bauen
+    cd mac && ./build-app.sh        # on a Mac with Xcode
 
-    cd mac && ./build-app.sh        # auf einem Mac mit Xcode
+The result is `mac/build/KodiScreencast.zip`.
 
-Das Ergebnis ist `mac/build/KodiScreencast.zip`.
+## Good to know
 
-## Tests
+- **Short freeze after starting:** The picture stands still once for about
+  two seconds. This clears the backlog Kodi builds up while starting;
+  afterwards the picture responds quickly.
+- **Sound does not match the picture:** If the sound comes too early, raise
+  the sound delay; if it comes too late, lower it. On Linux with
+  `--audio-delay` (in ms, default 350), on the Mac in the settings.
+- **Volume:** Kodi's volume has no effect on the mirrored sound, the TV's
+  volume does. While mirroring, Kodi itself plays no sound.
+- **No sound:** Disable and re-enable the add-on in Kodi; the sound service
+  only starts together with the add-on.
+- **"Kodi verlangt Benutzername und Passwort"** (Kodi asks for user name and
+  password): enter the credentials from Kodi's settings under Services >
+  Control.
+- **Delay:** About 0.3 s for the picture, calculated from Kodi's debug log;
+  not yet measured with a stopwatch at the TV.
 
-    python3 -m pytest
+## For developers
 
-## Latenz
+    python3 -m pytest               # sender and add-on
+    cd mac && swift test            # Mac app, macOS only
 
-Noch nicht am Fernseher gemessen. Aus Kodis Debug-Log und den Puffern
-gerechnet: Bild etwa 0,3 s, Ton etwa 0,1 s plus die eingestellte Verzögerung.
-
-Kodis Player allein kommt mit Ton nicht unter rund 2 s:
-
-- Er startet das Bild 1,2 s hinter dem ersten Tonpaket, um den Tonpuffer zu
-  füllen.
-- Bei Live-Streams mit Ton spielt er 5 % langsamer, sobald der Tonpuffer
-  knapp wird, und füllt ihn so wieder auf.
-- Was während des Starts ankommt (Stream-Analyse rund 0,9 s), bleibt als
-  Rückstand im Puffer.
-
-Deshalb bekommt Kodi nur das Bild. Den Start-Rückstand baut der Sender mit
-einer Sendepause von 2 s ab: Kodis Puffer läuft leer, und den Zeitsprung
-danach rechnet Kodi heraus. Mit Tonspur im Strom hilft das kaum (etwa 0,4 s),
-weil Kodi den Puffer dann wieder auffüllt.
-
-Der Ton geht als rohes PCM per UDP an `resources/lib/receiver.py`, das ihn
-über `aplay` ausgibt. Der Dienst des Addons startet den Empfänger, sobald ein
-Screencast mit Ton läuft, und nimmt Kodi für die Dauer das Tongerät weg.
+Structure and background, including why the sound bypasses Kodi's player, are
+in the [design document](docs/superpowers/specs/2026-10-09-kodi-screencast-design.md)
+(in German).

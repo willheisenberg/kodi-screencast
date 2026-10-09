@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 320" width="1280" height="320" role="img" aria-label="kodi-screencast: Bildschirm und Ton per Klick auf Kodi spiegeln">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#16324f"/>
+      <stop offset="1" stop-color="#0b1726"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3fd0ff"/>
+      <stop offset="1" stop-color="#1589d8"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="320" rx="24" fill="url(#bg)"/>
+  <g transform="translate(96 48) scale(.4375)">
+    <rect x="150" y="96" width="290" height="190" rx="18" fill="none" stroke="url(#glow)" stroke-width="20"/>
+    <path d="M250 330h90M295 290v40" stroke="url(#glow)" stroke-width="20" stroke-linecap="round"/>
+    <g fill="none" stroke="#ffffff" stroke-width="18" stroke-linecap="round">
+      <path d="M196 234a52 52 0 0 1 52 52" opacity=".95"/>
+      <path d="M196 188a98 98 0 0 1 98 98" opacity=".6"/>
+      <path d="M196 142a144 144 0 0 1 144 144" opacity=".3"/>
+    </g>
+    <rect x="72" y="262" width="172" height="118" rx="14" fill="#0b1726" stroke="#ffffff" stroke-width="18"/>
+    <path d="M52 416h212" stroke="#ffffff" stroke-width="20" stroke-linecap="round"/>
+  </g>
+  <g font-family="system-ui, -apple-system, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif">
+    <text x="360" y="150" font-size="76" font-weight="700" fill="#ffffff">kodi-screencast</text>
+    <text x="362" y="206" font-size="30" fill="#9fd9f7">Bildschirm und Ton per Klick auf Kodi spiegeln</text>
+    <text x="362" y="252" font-size="24" fill="#6f8ba6">Linux (KDE Plasma) · macOS · Kodi-Addon</text>
+  </g>
+</svg>

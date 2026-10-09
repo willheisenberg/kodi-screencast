@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/img/banner.svg" alt="kodi-screencast: Bildschirm und Ton per Klick auf Kodi spiegeln" width="100%"></p>
+
 # kodi-screencast
 
 Spiegelt den Bildschirm eines Linux-Rechners (KDE/Wayland) mit einem Befehl

@@ -14,14 +14,14 @@ jobs:
       run:
         working-directory: mac
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Tests
         run: swift test
       - name: App bauen
         run: ./build-app.sh
       - name: Encoder und Muxer ohne Bildschirm prüfen
         run: build/KodiScreencast.app/Contents/MacOS/KodiScreencast --selftest build/selftest.ts
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: KodiScreencast
           path: |

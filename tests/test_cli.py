@@ -1,3 +1,4 @@
+import argparse
 import os
 import threading
 
@@ -66,3 +67,42 @@ def test_status_tells_by_exit_code_whether_a_cast_runs(tmp_path, monkeypatch):
 
     pid_file.write_text(str(os.getpid()))
     cli.main(["status"])
+
+
+def kodi_args(**overrides):
+    values = dict(host=None, rpc_port=8080, user="", password="")
+    return argparse.Namespace(**dict(values, **overrides))
+
+
+def test_explicit_host_is_trusted():
+    found = cli.find_kodi(kodi_args(host="10.0.0.5", rpc_port=8081), {})
+    assert found == ("10.0.0.5", 8081, True)
+
+
+def test_remembered_host_is_trusted_and_skips_discovery(monkeypatch):
+    monkeypatch.setattr(cli.discovery, "find", lambda: pytest.fail("darf nicht suchen"))
+    state = {"host": "10.0.0.5", "rpc_port": 8081}
+    assert cli.find_kodi(kodi_args(), state) == ("10.0.0.5", 8081, True)
+
+
+def test_discovered_host_is_not_trusted(monkeypatch):
+    monkeypatch.setattr(cli.discovery, "find", lambda: [("Kodi", "10.0.0.9", 8080)])
+    assert cli.find_kodi(kodi_args(), {}) == ("10.0.0.9", 8080, False)
+
+
+def test_credentials_are_never_sent_to_a_merely_discovered_host(monkeypatch):
+    monkeypatch.setattr(cli.discovery, "find", lambda: [("Kodi", "10.0.0.9", 8080)])
+    monkeypatch.setattr(cli, "load_state", lambda: {})
+    monkeypatch.setattr(cli, "Kodi", lambda *a, **k: pytest.fail("darf keinen Client anlegen"))
+    with pytest.raises(SystemExit, match="--host 10.0.0.9"):
+        cli.open_kodi(kodi_args(user="kodi", password="geheim"))
+
+
+def test_host_given_on_the_command_line_is_remembered(tmp_path, monkeypatch):
+    monkeypatch.setattr(cli, "STATE_FILE", tmp_path / "state.json")
+    cli.open_kodi(kodi_args(host="10.0.0.5", user="kodi", password="geheim"))
+    assert cli.load_state() == {"host": "10.0.0.5", "rpc_port": 8080}
+
+
+def test_pid_file_never_falls_back_to_tmp():
+    assert not str(cli.PID_FILE).startswith("/tmp/")

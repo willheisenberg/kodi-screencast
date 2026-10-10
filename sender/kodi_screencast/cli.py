@@ -13,10 +13,13 @@ from pathlib import Path
 from . import discovery, pipeline
 from .kodi import ADDON_ID, Kodi, KodiError
 
-STATE_FILE = Path(
+STATE_DIR = Path(
     os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")
-) / "kodi-screencast/state.json"
-PID_FILE = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "kodi-screencast.pid"
+) / "kodi-screencast"
+STATE_FILE = STATE_DIR / "state.json"
+# Nie in ein für alle beschreibbares Verzeichnis wie /tmp ausweichen: dort
+# könnte ein anderer Nutzer die Datei vorab anlegen oder verlinken.
+PID_FILE = Path(os.environ.get("XDG_RUNTIME_DIR") or STATE_DIR) / "kodi-screencast.pid"
 
 
 def load_state():
@@ -31,9 +34,13 @@ def save_state(state):
     STATE_FILE.write_text(json.dumps(state))
 
 
-def find_kodi(args):
+def find_kodi(args, state):
+    """Liefert (adresse, port, vertraut). Vertraut ist nur ein Ziel, das der
+    Nutzer selbst angegeben hat, jetzt oder bei einem früheren Aufruf."""
     if args.host:
-        return args.host, args.rpc_port
+        return args.host, args.rpc_port, True
+    if state.get("host"):
+        return state["host"], state.get("rpc_port", args.rpc_port), True
     found = discovery.find()
     if not found:
         sys.exit(
@@ -45,7 +52,24 @@ def find_kodi(args):
         names = ", ".join(f"{name} ({address})" for name, address, _ in found)
         sys.exit(f"Mehrere Kodi-Geräte gefunden: {names}. Bitte --host angeben.")
     _name, address, port = found[0]
-    return address, port
+    return address, port, False
+
+
+def open_kodi(args):
+    """Kodi-Client für das Ziel des Aufrufs; ein mit --host genanntes wird gemerkt."""
+    state = load_state()
+    host, rpc_port, trusted = find_kodi(args, state)
+    if args.user and not trusted:
+        # Eine mDNS-Ankündigung kann jedes Gerät im Netz fälschen; an ein nur
+        # so gefundenes Ziel gehen keine Zugangsdaten.
+        sys.exit(
+            f"Kodi unter {host} gefunden. Zugangsdaten werden nur an ein selbst "
+            f"angegebenes Ziel geschickt: bitte einmal mit --host {host} aufrufen, "
+            "die Adresse wird danach gemerkt."
+        )
+    if args.host and (state.get("host"), state.get("rpc_port")) != (host, rpc_port):
+        save_state(dict(state, host=host, rpc_port=rpc_port))
+    return Kodi(host, rpc_port, args.user, args.password)
 
 
 def default_monitor():
@@ -100,8 +124,8 @@ def start(args):
     from gi.repository import GLib, Gst, GstVideo
     from .portal import PortalError, ScreenCast
 
-    host, rpc_port = find_kodi(args)
-    kodi = Kodi(host, rpc_port, args.user, args.password)
+    kodi = open_kodi(args)
+    host = kodi.host
     if not kodi.has_addon():
         sys.exit(f"Das Addon {ADDON_ID} ist in Kodi nicht installiert oder deaktiviert.")
 
@@ -151,6 +175,7 @@ def start(args):
         )
 
     stopped = threading.Event()
+    PID_FILE.parent.mkdir(parents=True, exist_ok=True)
     PID_FILE.write_text(str(os.getpid()))
     try:
         pipe.set_state(Gst.State.PLAYING)
@@ -188,8 +213,7 @@ def stop(_args):
 
 def playing(args):
     """Nennt, was Kodi gerade spielt; Exit-Code 0 nur, wenn dort etwas läuft."""
-    host, rpc_port = find_kodi(args)
-    title = Kodi(host, rpc_port, args.user, args.password).other_playback(args.port)
+    title = open_kodi(args).other_playback(args.port)
     if title is None:
         sys.exit(1)
     print(title)
@@ -210,7 +234,8 @@ def main(argv=None):
     commands = parser.add_subparsers(dest="command", required=True)
 
     def kodi_arguments(command):
-        command.add_argument("--host", help="Adresse von Kodi (sonst Suche im Netz)")
+        command.add_argument(
+            "--host", help="Adresse von Kodi, wird gemerkt (ohne Angabe: Suche im Netz)")
         command.add_argument("--rpc-port", type=int, default=8080,
                              help="HTTP-Port von Kodi, nur mit --host (Standard 8080)")
         command.add_argument("--user", default=os.environ.get("KODI_USER", ""))

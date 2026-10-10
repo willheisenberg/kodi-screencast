@@ -74,10 +74,13 @@ If starting fails, the tooltip shows the sender's error message.
     kodi-screencast stop
     kodi-screencast status
 
-Without `--host` the sender searches the network for Kodi. If Kodi asks for a
-login, pass the credentials through `KODI_USER` and `KODI_PASSWORD` or
-`--user`/`--password`. `start --help` lists all options (bitrate, picture
-height, no sound, ports).
+The address given with `--host` is remembered, so later calls work without
+it. If no address is known, the sender searches the network for Kodi. If Kodi
+asks for a login, pass the credentials through `KODI_USER` and `KODI_PASSWORD`
+or `--user`/`--password`. Credentials are only ever sent to an address you
+gave with `--host`, never to a Kodi that was merely found on the network, and
+Kodi transmits them unencrypted over HTTP. `start --help` lists all options
+(bitrate, picture height, no sound, ports).
 
 On first start KDE asks which screen to share. The choice is remembered.
 

@@ -2,11 +2,12 @@
 
 # kodi-screencast
 
-Mirrors the screen and system sound of a Linux PC or a Mac to Kodi, with one
-click or one command. Kodi keeps running as usual and shows the screen like a
+Mirrors the screen and system sound of a Linux PC, a Mac or an Android phone
+to Kodi, with one click or one command. Kodi keeps running as usual and shows the screen like a
 video.
 
-The interface of the Plasma widget and the Mac app is currently German only;
+The interface of the Plasma widget, the Mac app and the Android app is
+currently German only;
 the labels below are quoted as they appear on screen.
 
 ## What you need
@@ -18,8 +19,9 @@ The project has two parts, which must be on the same network:
 | Add-on `plugin.video.screencast` | on Kodi | tested with LibreELEC 12.2.1 on a Pi 5 |
 | Sender for Linux | KDE Plasma 6 on Wayland | tested on Arch with Intel graphics |
 | Sender for macOS | macOS 14 or later | builds, not yet tried on a real Mac |
+| Sender for Android | Android 10 or later | tested on a phone with Android 16 |
 
-The add-on is always required, plus one of the two senders.
+The add-on is always required, plus one of the senders.
 
 The sender sends the picture to UDP port 5004 and the sound to UDP port 5005
 on Kodi, and controls Kodi through its HTTP interface (port 8080). A firewall
@@ -126,6 +128,52 @@ Settings > General > Login Items.
 
 The result is `mac/build/KodiScreencast.zip`.
 
+## Android
+
+The app under `android/` adds a tile to the quick settings (the buttons above
+the notifications): one tap starts mirroring, the next one stops it.
+
+### Download
+
+GitHub builds the app on every change. Open the latest run under
+[Actions > Android-App](https://github.com/willheisenberg/kodi-screencast/actions/workflows/android.yml),
+download the `KodiScreencast-Android` package under "Artifacts" (you need to
+be signed in to GitHub) and install the `app-debug.apk` inside on the phone.
+Android asks once whether apps from this source may be installed.
+
+Every build is signed with a fresh key, so an update only installs after the
+old version has been removed; the settings have to be entered again.
+
+### Set up
+
+1. Open the app and enter Kodi's IP address, plus user name and password if
+   Kodi asks for a login. There is no automatic network search here.
+2. Tap "Kachel zu den Schnelleinstellungen hinzufügen" (add tile to the quick
+   settings) and confirm. Before Android 13, add the tile by hand through the
+   edit button of the quick settings.
+3. Tap the tile or "Übertragung starten" (start mirroring). On first start,
+   allow recording audio and notifications. Android then asks what to share,
+   every time: choose the entire screen, or a single app.
+
+To stop, tap the tile again or "Beenden" (stop) in the notification. A long
+press on the tile opens the settings.
+
+### Limits set by Android
+
+- **Sound:** Android only hands out the sound of apps that allow it, and it
+  keeps playing on the phone as well.
+- **Protected content:** Netflix and other apps with copy protection stay
+  black, and so does any screen showing a password field, including this
+  app's own settings.
+- **Portrait:** The picture always has the TV's format; in portrait the
+  phone's screen sits in the middle with black bars left and right.
+
+### Build it yourself
+
+    cd android && ./gradlew assembleDebug        # needs the Android SDK and Java 17
+
+The result is `android/app/build/outputs/apk/debug/app-debug.apk`.
+
 ## Good to know
 
 - **Short freeze after starting:** The picture stands still once for about
@@ -133,7 +181,8 @@ The result is `mac/build/KodiScreencast.zip`.
   afterwards the picture responds quickly.
 - **Sound does not match the picture:** If the sound comes too early, raise
   the sound delay; if it comes too late, lower it. On Linux with
-  `--audio-delay` (in ms, default 350), on the Mac in the settings.
+  `--audio-delay` (in ms, default 350), on the Mac and on Android in the
+  settings.
 - **Volume:** Kodi's volume has no effect on the mirrored sound, the TV's
   volume does. While mirroring, Kodi itself plays no sound.
 - **No sound:** Disable and re-enable the add-on in Kodi; the sound service
@@ -148,6 +197,7 @@ The result is `mac/build/KodiScreencast.zip`.
 
     python3 -m pytest               # sender and add-on
     cd mac && swift test            # Mac app, macOS only
+    cd android && ./gradlew testDebugUnitTest
 
 Structure and background, including why the sound bypasses Kodi's player, are
 in the [design document](docs/superpowers/specs/2026-10-09-kodi-screencast-design.md)

@@ -1,0 +1,8 @@
+io.github.willheisenberg.kodiscreencast.app-pngs-0 /home/will/ownProjects/kodi-screencast/android/app/build/generated/res/pngs/debug
+io.github.willheisenberg.kodiscreencast.app-updated_navigation_xml-1 /home/will/ownProjects/kodi-screencast/android/app/build/generated/updated_navigation_xml/debug
+io.github.willheisenberg.kodiscreencast.app-packageDebugResources-2 /home/will/ownProjects/kodi-screencast/android/app/build/intermediates/incremental/debug/packageDebugResources/merged.dir
+io.github.willheisenberg.kodiscreencast.app-packageDebugResources-3 /home/will/ownProjects/kodi-screencast/android/app/build/intermediates/incremental/debug/packageDebugResources/stripped.dir
+io.github.willheisenberg.kodiscreencast.app-debug-4 /home/will/ownProjects/kodi-screencast/android/app/build/intermediates/merged_res/debug/mergeDebugResources
+io.github.willheisenberg.kodiscreencast.app-debug-5 /home/will/ownProjects/kodi-screencast/android/app/src/debug/res
+io.github.willheisenberg.kodiscreencast.app-main-6 /home/will/ownProjects/kodi-screencast/android/app/src/main/res
+gradleHome-0 /home/will/.gradle

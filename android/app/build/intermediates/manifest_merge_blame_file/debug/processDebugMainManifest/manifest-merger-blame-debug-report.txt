@@ -1,0 +1,120 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="io.github.willheisenberg.kodiscreencast"
+4    android:versionCode="1"
+5    android:versionName="0.1" >
+6
+7    <uses-sdk
+7-->INJECTED
+8        android:minSdkVersion="29"
+8-->INJECTED
+9        android:targetSdkVersion="36" />
+9-->INJECTED
+10
+11    <uses-permission android:name="android.permission.INTERNET" />
+11-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:4:5-67
+11-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:4:22-64
+12    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+12-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:5:5-77
+12-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:5:22-74
+13    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+13-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:6:5-94
+13-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:6:22-91
+14    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+14-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:7:5-71
+14-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:7:22-68
+15    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+15-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:8:5-77
+15-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:8:22-74
+16    <!-- usesCleartextTraffic: Kodis Fernsteuerung spricht nur HTTP. -->
+17    <application
+17-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:11:5-57:19
+18        android:allowBackup="false"
+18-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:12:9-36
+19        android:debuggable="true"
+20        android:extractNativeLibs="false"
+20-->INJECTED
+21        android:icon="@mipmap/ic_launcher"
+21-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:13:9-43
+22        android:label="@string/app_name"
+22-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:14:9-41
+23        android:theme="@style/App"
+23-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:15:9-35
+24        android:usesCleartextTraffic="true" >
+24-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:16:9-44
+25        <activity
+25-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:18:9-29:20
+26            android:name="io.github.willheisenberg.kodiscreencast.MainActivity"
+26-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:19:13-41
+27            android:exported="true" >
+27-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:20:13-36
+28            <intent-filter>
+28-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:21:13-24:29
+29                <action android:name="android.intent.action.MAIN" />
+29-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:22:17-69
+29-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:22:25-66
+30
+31                <category android:name="android.intent.category.LAUNCHER" />
+31-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:23:17-77
+31-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:23:27-74
+32            </intent-filter>
+33            <!-- Langes Drücken auf die Kachel öffnet die Einstellungen. -->
+34            <intent-filter>
+34-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:26:13-28:29
+35                <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
+35-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:27:17-99
+35-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:27:25-96
+36            </intent-filter>
+37        </activity>
+38        <activity
+38-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:31:9-37:50
+39            android:name="io.github.willheisenberg.kodiscreencast.StartActivity"
+39-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:32:13-42
+40            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
+40-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:33:13-113
+41            android:excludeFromRecents="true"
+41-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:34:13-46
+42            android:exported="false"
+42-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:35:13-37
+43            android:taskAffinity=""
+43-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:36:13-36
+44            android:theme="@style/Transparent" />
+44-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:37:13-47
+45
+46        <service
+46-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:39:9-42:63
+47            android:name="io.github.willheisenberg.kodiscreencast.CastService"
+47-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:40:13-40
+48            android:exported="false"
+48-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:41:13-37
+49            android:foregroundServiceType="mediaProjection" />
+49-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:42:13-60
+50        <service
+50-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:44:9-56:19
+51            android:name="io.github.willheisenberg.kodiscreencast.CastTileService"
+51-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:45:13-44
+52            android:exported="true"
+52-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:46:13-36
+53            android:icon="@drawable/ic_tile"
+53-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:47:13-45
+54            android:label="@string/tile_label"
+54-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:48:13-47
+55            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+55-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:49:13-77
+56            <intent-filter>
+56-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:50:13-52:29
+57                <action android:name="android.service.quicksettings.action.QS_TILE" />
+57-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:51:17-87
+57-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:51:25-84
+58            </intent-filter>
+59
+60            <meta-data
+60-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:53:13-55:40
+61                android:name="android.service.quicksettings.TOGGLEABLE_TILE"
+61-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:54:17-77
+62                android:value="true" />
+62-->/home/will/ownProjects/kodi-screencast/android/app/src/main/AndroidManifest.xml:55:17-37
+63        </service>
+64    </application>
+65
+66</manifest>

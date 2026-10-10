@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.willheisenberg.kodiscreencast.TsMuxerTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-10T18:44:00.120Z" hostname="wardenclyffe" time="0.026">
+  <properties/>
+  <testcase name="keyframesAreAnnouncedByPatAndPmt" classname="io.github.willheisenberg.kodiscreencast.TsMuxerTest" time="0.003"/>
+  <testcase name="outputIsWholeSyncedPackets" classname="io.github.willheisenberg.kodiscreencast.TsMuxerTest" time="0.003"/>
+  <testcase name="continuityCounterCountsPerPid" classname="io.github.willheisenberg.kodiscreencast.TsMuxerTest" time="0.015"/>
+  <testcase name="crcMatchesTheMpeg2CheckValue" classname="io.github.willheisenberg.kodiscreencast.TsMuxerTest" time="0.001"/>
+  <testcase name="payloadSurvivesPacketisation" classname="io.github.willheisenberg.kodiscreencast.TsMuxerTest" time="0.002"/>
+  <testcase name="timestampsStartOneSecondIn" classname="io.github.willheisenberg.kodiscreencast.TsMuxerTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

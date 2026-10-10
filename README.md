@@ -93,13 +93,17 @@ itself and needs no other software.
 
 ### Download
 
-GitHub builds the app on every change. Open the latest run under
+Download `KodiScreencast-<version>-mac.zip` from the
+[latest release](https://github.com/willheisenberg/kodi-screencast/releases/latest).
+
+The state between releases is built on every change: open the latest run
+under
 [Actions > Mac-App](https://github.com/willheisenberg/kodi-screencast/actions/workflows/mac.yml)
 and download the `KodiScreencast` package under "Artifacts" at the bottom
 (you need to be signed in to GitHub). It contains `KodiScreencast.zip`; the
 file `selftest.ts` is not needed.
 
-Unpack `KodiScreencast.zip` on the Mac only. If it is unpacked on Linux or
+Unpack the ZIP on the Mac only. If it is unpacked on Linux or
 Windows and the folder is copied over, the executable permission and the
 signature can get lost, and the app will not start.
 
@@ -135,14 +139,18 @@ the notifications): one tap starts mirroring, the next one stops it.
 
 ### Download
 
-GitHub builds the app on every change. Open the latest run under
-[Actions > Android-App](https://github.com/willheisenberg/kodi-screencast/actions/workflows/android.yml),
-download the `KodiScreencast-Android` package under "Artifacts" (you need to
-be signed in to GitHub) and install the `app-debug.apk` inside on the phone.
-Android asks once whether apps from this source may be installed.
+Download `KodiScreencast-<version>.apk` from the
+[latest release](https://github.com/willheisenberg/kodi-screencast/releases/latest) and install it on the phone.
+Android asks once whether apps from this source may be installed. All
+releases are signed with the same key, so a newer one installs over the old
+one and keeps the settings.
 
-Every build is signed with a fresh key, so an update only installs after the
-old version has been removed; the settings have to be entered again.
+The state between releases is built on every change, under
+[Actions > Android-App](https://github.com/willheisenberg/kodi-screencast/actions/workflows/android.yml)
+as the `KodiScreencast-Android` package (you need to be signed in to GitHub).
+Those builds are signed with a fresh key each time: they only install after
+the installed version has been removed, and the settings have to be entered
+again.
 
 ### Set up
 

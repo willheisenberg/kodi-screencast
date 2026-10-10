@@ -39,17 +39,18 @@ class Audio:
         self.current = None
         self.process = None
 
-    def switch(self, wanted):
+    def switch(self, audio, source):
+        wanted = (audio, source) if audio else None
         if wanted == self.current:
             return
         self.stop()
         if wanted:
-            port, delay = wanted
+            port, delay = audio
             device = stream.alsa_device(kodi_audio_device())
             xbmc.audioSuspend()
             try:
                 self.process = subprocess.Popen(
-                    ["python3", RECEIVER, str(port), str(delay), device]
+                    ["python3", RECEIVER, str(port), str(delay), device, source or ""]
                 )
             except OSError as error:
                 xbmc.audioResume()
@@ -132,7 +133,7 @@ def main():
                 file, position, live = "", 0.0, False
 
             casting = stream.is_screencast(file)
-            audio.switch(stream.audio_of_playing(file))
+            audio.switch(stream.audio_of_playing(file), stream.source_of_playing(file))
 
             playback = None
             if casting:

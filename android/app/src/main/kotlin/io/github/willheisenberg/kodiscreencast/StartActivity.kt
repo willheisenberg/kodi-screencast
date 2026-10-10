@@ -52,25 +52,33 @@ class StartActivity : Activity() {
             val result = try {
                 val kodi = KodiClient(settings.host, settings.user, settings.password)
                 kodi.requireAddon()
-                Result.success(kodi.otherPlayback(CastSession.VIDEO_PORT))
+                Result.success(kodi.otherPlayback(CastSession.VIDEO_PORT, kodi.localAddress()))
             } catch (e: KodiException) {
                 Result.failure(e)
             }
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 result.fold(
-                    onSuccess = { title -> if (title == null) askForCapture() else confirmInterrupting(title) },
+                    onSuccess = { other -> if (other == null) askForCapture() else confirm(other) },
                     onFailure = { showError(it.message ?: it.toString()) },
                 )
             }
         }
     }
 
-    private fun confirmInterrupting(title: String) {
-        AlertDialog.Builder(this)
-            .setTitle(getString(R.string.interrupt_title, title))
-            .setMessage(R.string.interrupt_message)
-            .setPositiveButton(R.string.interrupt_confirm) { _, _ -> askForCapture() }
+    private fun confirm(other: Interruption) {
+        val builder = AlertDialog.Builder(this)
+        when (other) {
+            is Interruption.Playback -> builder
+                .setTitle(getString(R.string.interrupt_title, other.title))
+                .setMessage(R.string.interrupt_message)
+                .setPositiveButton(R.string.interrupt_confirm) { _, _ -> askForCapture() }
+            Interruption.OtherCast -> builder
+                .setTitle(R.string.takeover_title)
+                .setMessage(R.string.takeover_message)
+                .setPositiveButton(R.string.takeover_confirm) { _, _ -> askForCapture() }
+        }
+        builder
             .setNegativeButton(R.string.cancel) { _, _ -> finish() }
             .setOnCancelListener { finish() }
             .show()

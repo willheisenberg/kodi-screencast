@@ -2,7 +2,9 @@
 
 import base64
 import json
+import socket
 import urllib.error
+import urllib.parse
 import urllib.request
 
 ADDON_ID = "plugin.video.screencast"
@@ -16,8 +18,15 @@ class RpcError(KodiError):
     """Kodi hat den Aufruf angenommen, aber mit einem Fehler beantwortet."""
 
 
-def plugin_url(port, audio_port=None, audio_delay_ms=0):
+# Eine Rückfrage vor dem Start gilt statt einer Wiedergabe der Übertragung
+# eines anderen Geräts.
+OTHER_CAST = object()
+
+
+def plugin_url(port, audio_port=None, audio_delay_ms=0, source=None):
     url = f"plugin://{ADDON_ID}/?port={port}"
+    if source:
+        url += f"&source={source}"
     if audio_port:
         url += f"&audio_port={audio_port}&audio_delay={audio_delay_ms}"
     return url
@@ -73,30 +82,47 @@ class Kodi:
             return False
         return details["addon"]["enabled"]
 
-    def play(self, stream_port, audio_port=None, audio_delay_ms=0):
-        url = plugin_url(stream_port, audio_port, audio_delay_ms)
+    def local_address(self):
+        """Die eigene IP-Adresse, wie Kodi sie als Absender der Pakete sieht."""
+        probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            probe.connect((self.host, 9))  # legt nur den Weg fest, sendet nichts
+            return probe.getsockname()[0]
+        except OSError:
+            return None
+        finally:
+            probe.close()
+
+    def play(self, stream_port, audio_port=None, audio_delay_ms=0, source=None):
+        url = plugin_url(stream_port, audio_port, audio_delay_ms, source)
         self.call("Player.Open", {"item": {"file": url}})
 
-    def other_playback(self, stream_port):
-        """Titel dessen, was Kodi gerade außer dem eigenen Stream spielt, sonst None."""
+    def other_playback(self, stream_port, source=None):
+        """Was ein Start unterbräche: der Titel der laufenden Wiedergabe,
+        OTHER_CAST für die Übertragung eines anderen Geräts, sonst None."""
         for player in self.call("Player.GetActivePlayers"):
             item = self.call(
                 "Player.GetItem",
                 {"playerid": player["playerid"], "properties": ["file", "title"]},
             )["item"]
             file = item.get("file", "")
-            if not is_own_stream(file, stream_port):
+            if not is_screencast(file, stream_port):
                 return item.get("title") or item.get("label") or file.rsplit("/", 1)[-1]
+            # Vor dem Start ist nur ein Strom mit der eigenen Adresse der eigene
+            # (ein Rest eines früheren Laufs); einer ohne Absender stammt von
+            # einem älteren Sender.
+            if source is None or stream_source(file) != source:
+                return OTHER_CAST
         return None
 
-    def playback_time(self, stream_port):
+    def playback_time(self, stream_port, source=None):
         """Sekunden, die der eigene Stream schon spielt; None, solange er nicht läuft."""
         for player in self.call("Player.GetActivePlayers"):
             item = self.call(
                 "Player.GetItem",
                 {"playerid": player["playerid"], "properties": ["file"]},
             )["item"]
-            if not is_own_stream(item.get("file", ""), stream_port):
+            if not is_own_stream(item.get("file", ""), stream_port, source):
                 continue
             time = self.call(
                 "Player.GetProperties",
@@ -108,16 +134,34 @@ class Kodi:
             )
         return None
 
-    def stop(self, stream_port):
+    def stop(self, stream_port, source=None):
         """Stoppt die Wiedergabe nur, wenn noch der eigene Stream läuft."""
         for player in self.call("Player.GetActivePlayers"):
             item = self.call(
                 "Player.GetItem",
                 {"playerid": player["playerid"], "properties": ["file"]},
             )["item"]
-            if is_own_stream(item.get("file", ""), stream_port):
+            if is_own_stream(item.get("file", ""), stream_port, source):
                 self.call("Player.Stop", {"playerid": player["playerid"]})
 
 
-def is_own_stream(file, stream_port):
-    return file.startswith((f"udp://@:{stream_port}?", plugin_url(stream_port)))
+def is_screencast(file, stream_port):
+    """Kodi spielt einen Screencast auf diesem Port, von welchem Gerät auch immer."""
+    return file.startswith((
+        f"udp://@:{stream_port}/?", f"udp://@:{stream_port}?", plugin_url(stream_port),
+    ))
+
+
+def stream_source(file):
+    """Absenderadresse, auf die das Addon den Strom beschränkt hat, sonst None."""
+    params = dict(urllib.parse.parse_qsl(file.partition("?")[2]))
+    return params.get("sources") or params.get("source")
+
+
+def is_own_stream(file, stream_port, source=None):
+    """Der Strom einer laufenden eigenen Übertragung.
+
+    Ein Addon ohne Absenderfilter nennt keinen Absender; dann gilt jeder
+    Screencast auf dem Port als der eigene.
+    """
+    return is_screencast(file, stream_port) and stream_source(file) in (None, source)

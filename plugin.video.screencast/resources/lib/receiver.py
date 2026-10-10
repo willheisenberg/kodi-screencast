@@ -1,7 +1,10 @@
 """Ton-Empfänger: nimmt rohes PCM per UDP an und gibt es über aplay aus.
 
 Läuft als eigener Prozess neben Kodi, damit der Ton nicht durch Kodis Player
-und dessen Puffer muss. Aufruf: receiver.py PORT VERZÖGERUNG_MS ALSA_GERÄT
+und dessen Puffer muss. Aufruf: receiver.py PORT VERZÖGERUNG_MS ALSA_GERÄT [SENDER]
+
+Mit SENDER (IP-Adresse) zählen nur dessen Pakete; der Ton eines zweiten
+Geräts, das an denselben Port sendet, mischt sich dann nicht dazu.
 """
 
 import collections
@@ -64,7 +67,7 @@ def open_aplay(device):
     return aplay
 
 
-def run(port, delay_ms, device):
+def run(port, delay_ms, device, source=""):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(("", port))
     sock.setblocking(False)
@@ -85,7 +88,10 @@ def run(port, delay_ms, device):
         if readable:
             try:
                 while True:
-                    delay.push(sock.recv(65536), now)
+                    data, address = sock.recvfrom(65536)
+                    if source and address[0] != source:
+                        continue
+                    delay.push(data, now)
                     last_packet = now
             except BlockingIOError:
                 pass
@@ -119,4 +125,4 @@ def run(port, delay_ms, device):
 
 
 if __name__ == "__main__":
-    sys.exit(run(int(sys.argv[1]), int(sys.argv[2]), sys.argv[3]))
+    sys.exit(run(int(sys.argv[1]), int(sys.argv[2]), *sys.argv[3:5]))

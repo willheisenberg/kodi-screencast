@@ -190,6 +190,14 @@ The result is `android/app/build/outputs/apk/debug/app-debug.apk`.
 - **"Kodi verlangt Benutzername und Passwort"** (Kodi asks for user name and
   password): enter the credentials from Kodi's settings under Services >
   Control.
+- **Several devices:** Only one device can mirror at a time. If another one
+  is already mirroring, the sender asks whether to take over; the other
+  device then stops by itself within a few seconds. This needs the current
+  add-on and sender on every device: Kodi then only accepts packets from the
+  device that started last. Older senders still work, but their pictures can
+  mix when two of them send at once.
+- **Stopped on Kodi:** If the mirroring is stopped on Kodi itself, the sender
+  notices and stops after a few seconds.
 - **Delay:** About 0.3 s for the picture, calculated from Kodi's debug log;
   not yet measured with a stopwatch at the TV.
 

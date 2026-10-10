@@ -18,7 +18,7 @@ def test_ports_outside_the_user_range_are_rejected(query):
 
 
 def test_stream_url_listens_on_the_port():
-    assert stream.stream_url(6000).startswith("udp://@:6000?")
+    assert stream.stream_url(6000).startswith("udp://@:6000/?")
 
 
 def test_stream_is_marked_as_realtime_for_ffmpegdirect():
@@ -59,3 +59,27 @@ def test_only_own_streams_count_as_screencast():
     assert not stream.is_screencast("udp://@:1234")
     assert not stream.is_screencast("/storage/videos/film.mkv")
     assert not stream.is_screencast("")
+
+
+def test_stream_is_limited_to_the_sender_that_names_itself():
+    query = "?port=6000&source=192.168.1.5&audio_port=6001&audio_delay=150"
+    assert stream.source_from_query(query) == "192.168.1.5"
+    url = stream.stream_url(6000, stream.audio_from_query(query), "192.168.1.5")
+    assert url.startswith("udp://@:6000/?overrun_nonfatal=1&fifo_size=50000&sources=192.168.1.5&")
+    assert stream.is_screencast(url)
+    # Der Ton-Dienst liest Absender und Ton-Angaben aus der laufenden Adresse.
+    assert stream.source_of_playing(url) == "192.168.1.5"
+    assert stream.audio_of_playing(url) == (6001, 150)
+
+
+def test_senders_that_do_not_name_themselves_are_not_filtered():
+    assert stream.source_from_query("?port=6000") is None
+    assert "sources" not in stream.stream_url(6000)
+    assert stream.source_of_playing(stream.stream_url(6000)) is None
+    assert stream.source_of_playing("/storage/film.mkv?source=192.168.1.5") is None
+
+
+@pytest.mark.parametrize("source", ["kodi.local", "1.2.3.4%26fifo_size%3D1", "::1"])
+def test_only_plain_ipv4_addresses_reach_the_stream_url(source):
+    with pytest.raises(ValueError):
+        stream.source_from_query(f"?port=6000&source={source}")

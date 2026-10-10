@@ -1,5 +1,6 @@
 """Stream-Adresse und Wiedergabe-Eigenschaften, ohne Kodi-Abhängigkeit."""
 
+import ipaddress
 import re
 from urllib.parse import parse_qsl
 
@@ -42,9 +43,28 @@ def audio_from_query(query):
     return port, max(0, int(params.get("audio_delay", DEFAULT_AUDIO_DELAY_MS)))
 
 
-def stream_url(port, audio=None):
+def _source(params):
+    # "sources" heißt die Angabe in der Stream-Adresse (so nennt sie ffmpeg),
+    # "source" in der Plugin-Adresse des Senders.
+    value = params.get("sources") or params.get("source")
+    return str(ipaddress.IPv4Address(value)) if value else None
+
+
+def source_from_query(query):
+    """IP-Adresse des Senders; None, wenn er keine nennt (ältere Sender)."""
+    return _source(_params(query))
+
+
+def stream_url(port, audio=None, source=None):
     # overrun_nonfatal: bei vollem Empfangspuffer Pakete verwerfen statt abbrechen.
-    url = f"udp://@:{port}?overrun_nonfatal=1&fifo_size=50000"
+    # Der Schrägstrich vor dem Fragezeichen muss sein: Ohne ihn liest Kodi
+    # alles hinter dem Doppelpunkt als Portnummer und reicht die Angaben
+    # nicht an ffmpeg weiter.
+    url = f"udp://@:{port}/?overrun_nonfatal=1&fifo_size=50000"
+    if source:
+        # Nur Pakete dieses Absenders annehmen. Sonst vermischen sich die
+        # Ströme, wenn ein zweites Gerät an denselben Port sendet.
+        url += f"&sources={source}"
     if audio:
         # ffmpeg übergeht die beiden Angaben; der Ton-Dienst liest sie aus der
         # Adresse des laufenden Streams.
@@ -65,6 +85,16 @@ def audio_of_playing(file):
         return None
     try:
         return audio_from_query(file)
+    except ValueError:
+        return None
+
+
+def source_of_playing(file):
+    """Sender des laufenden Screencasts, auf den auch der Ton beschränkt wird."""
+    if not is_screencast(file):
+        return None
+    try:
+        return source_from_query(file)
     except ValueError:
         return None
 

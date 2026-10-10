@@ -35,12 +35,18 @@ final class CastSession: ObservableObject {
     private static let catchUpAfter = 1.0
     private static let catchUpGiveUp: Duration = .seconds(20)
 
+    // Erst nach zwei Blicken ohne den eigenen Strom aufhören: Das Addon
+    // erkennt einen Stopp an Kodi daran, dass der Sender kurz danach noch sendet.
+    private static let watchInterval: Duration = .seconds(2)
+    private static let watchMisses = 2
+
     @Published private(set) var state: State = .idle
 
     private var capture: ScreenCapture?
     private var pipeline: Pipeline?
     private var kodi: KodiClient?
-    private var catchUp: Task<Void, Never>?
+    private var source: String?
+    private var companion: Task<Void, Never>?
 
     var isActive: Bool { state == .starting || state == .running }
 
@@ -50,7 +56,7 @@ final class CastSession: ObservableObject {
         Task {
             // Läuft auf Kodi schon etwas, erst nachfragen. Ist Kodi nicht
             // erreichbar, meldet das gleich der eigentliche Start.
-            if let title = await interrupted(by: settings), !confirmInterrupting(title) {
+            if let other = await interrupted(by: settings), !confirmInterrupting(other) {
                 state = .idle
                 return
             }
@@ -72,20 +78,28 @@ final class CastSession: ObservableObject {
         }
     }
 
-    private func interrupted(by settings: CastSettings) async -> String? {
+    private func interrupted(by settings: CastSettings) async -> Interruption? {
         let host = settings.host.trimmingCharacters(in: .whitespaces)
         guard !host.isEmpty,
             let kodi = try? KodiClient(host: host, user: settings.user, password: settings.password)
         else { return nil }
-        return try? await kodi.otherPlayback(port: CastSettings.videoPort)
+        return try? await kodi.otherPlayback(
+            port: CastSettings.videoPort, source: kodi.localAddress())
     }
 
-    private func confirmInterrupting(_ title: String) -> Bool {
+    private func confirmInterrupting(_ other: Interruption) -> Bool {
         let alert = NSAlert()
-        alert.messageText = "Auf Kodi läuft gerade „\(title)“."
-        alert.informativeText =
-            "Für die Übertragung unterbrechen? Danach läuft es an derselben Stelle weiter."
-        alert.addButton(withTitle: "Unterbrechen")
+        switch other {
+        case .playback(let title):
+            alert.messageText = "Auf Kodi läuft gerade „\(title)“."
+            alert.informativeText =
+                "Für die Übertragung unterbrechen? Danach läuft es an derselben Stelle weiter."
+            alert.addButton(withTitle: "Unterbrechen")
+        case .otherCast:
+            alert.messageText = "Auf Kodi überträgt gerade ein anderes Gerät."
+            alert.informativeText = "Die Übertragung übernehmen? Das andere Gerät hört dann auf."
+            alert.addButton(withTitle: "Übernehmen")
+        }
         alert.addButton(withTitle: "Abbrechen")
         NSApp.activate(ignoringOtherApps: true)
         return alert.runModal() == .alertFirstButtonReturn
@@ -104,6 +118,8 @@ final class CastSession: ObservableObject {
                 "Das Addon \(KodiClient.addonID) ist in Kodi nicht installiert oder deaktiviert.")
         }
         self.kodi = kodi
+        let source = kodi.localAddress()
+        self.source = source
 
         let capture = ScreenCapture()
         self.capture = capture
@@ -131,31 +147,71 @@ final class CastSession: ObservableObject {
         try await kodi.play(
             port: CastSettings.videoPort,
             audioPort: settings.audio ? CastSettings.audioPort : nil,
-            audioDelayMs: settings.audioDelayMs)
+            audioDelayMs: settings.audioDelayMs, source: source)
 
-        catchUp = Task { [weak pipeline] in
+        companion = Task { [weak self, weak pipeline] in
             let clock = ContinuousClock()
             let deadline = clock.now + Self.catchUpGiveUp
+            var seen = false
             while true {
-                let played = try? await kodi.playbackTime(port: CastSettings.videoPort)
-                if let played, played >= Self.catchUpAfter { break }
-                if Task.isCancelled || clock.now > deadline { return }
+                let played = try? await kodi.playbackTime(
+                    port: CastSettings.videoPort, source: source)
+                if let played, played >= Self.catchUpAfter {
+                    seen = true
+                    break
+                }
+                if Task.isCancelled { return }
+                if clock.now > deadline { break }
                 try? await Task.sleep(for: .milliseconds(250))
             }
-            pipeline?.setGate(closed: true)
-            try? await Task.sleep(for: Self.catchUpPause)
-            pipeline?.setGate(closed: false)
+            if seen {
+                pipeline?.setGate(closed: true)
+                try? await Task.sleep(for: Self.catchUpPause)
+                pipeline?.setGate(closed: false)
+            }
+
+            // Spielt Kodi die eigene Übertragung nicht mehr, hat jemand dort
+            // gestoppt oder ein anderes Gerät übernommen; weiterzusenden
+            // hätte keinen Empfänger mehr. Fehlt sie von Anfang an, hat ein
+            // anderes Gerät gleich zu Beginn übernommen.
+            var misses = 0
+            while !Task.isCancelled {
+                try? await Task.sleep(for: Self.watchInterval)
+                if Task.isCancelled { return }
+                let playing: Bool
+                do {
+                    playing = try await kodi.playbackTime(
+                        port: CastSettings.videoPort, source: source) != nil
+                } catch {
+                    continue
+                }
+                if playing {
+                    misses = 0
+                } else {
+                    misses += 1
+                    if misses >= Self.watchMisses {
+                        await self?.displaced()
+                        return
+                    }
+                }
+            }
         }
     }
 
+    private func displaced() async {
+        guard isActive else { return }
+        await shutDown()
+        state = .failed("Kodi spielt die Übertragung nicht mehr.")
+    }
+
     private func shutDown() async {
-        catchUp?.cancel()
-        catchUp = nil
+        companion?.cancel()
+        companion = nil
         pipeline?.stop()
         pipeline = nil
         await capture?.stop()
         capture = nil
-        try? await kodi?.stop(port: CastSettings.videoPort)
+        try? await kodi?.stop(port: CastSettings.videoPort, source: source)
         kodi = nil
     }
 }

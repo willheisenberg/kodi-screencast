@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 
 from . import discovery, pipeline
-from .kodi import ADDON_ID, Kodi, KodiError
+from .kodi import ADDON_ID, OTHER_CAST, Kodi, KodiError
 
 STATE_DIR = Path(
     os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")
@@ -94,12 +94,12 @@ CATCH_UP_AFTER = 1.0  # Sekunden Wiedergabe, bevor die Pause beginnt
 CATCH_UP_GIVE_UP = 20.0
 
 
-def catch_up(pipe, kodi, stream_port, stopped, force_keyframe):
+def catch_up(pipe, kodi, stream_port, stopped, force_keyframe, source=None):
     """Baut Kodis Start-Rückstand mit einer Sendepause ab (läuft im eigenen Thread)."""
     give_up = time.monotonic() + CATCH_UP_GIVE_UP
     while True:
         try:
-            played = kodi.playback_time(stream_port)
+            played = kodi.playback_time(stream_port, source)
         except KodiError:
             played = None
         if played is not None and played >= CATCH_UP_AFTER:
@@ -114,6 +114,36 @@ def catch_up(pipe, kodi, stream_port, stopped, force_keyframe):
     # Der Strom setzt mitten in einer Bildgruppe wieder ein; Kodi braucht ein
     # vollständiges Bild, um weiterzudekodieren.
     force_keyframe(pipe.get_by_name(pipeline.ENCODER))
+
+
+WATCH_INTERVAL = 2.0
+# Erst nach zwei Blicken ohne den eigenen Strom aufhören: Das Addon erkennt
+# einen Stopp an Kodi daran, dass der Sender kurz danach noch sendet.
+WATCH_MISSES = 2
+
+
+def watch(kodi, stream_port, source, stopped, give_up):
+    """Ruft give_up, sobald Kodi die eigene Übertragung nicht mehr spielt.
+
+    Das passiert, wenn jemand an Kodi stoppt oder ein anderes Gerät die
+    Übertragung übernimmt; weiterzusenden hätte dann keinen Empfänger mehr.
+    Läuft nach catch_up: Bis dahin hatte Kodi Zeit, die Übertragung zu
+    starten. Fehlt sie von Anfang an, hat ein anderes Gerät gleich zu Beginn
+    übernommen.
+    """
+    misses = 0
+    while not stopped.wait(WATCH_INTERVAL):
+        try:
+            playing = kodi.playback_time(stream_port, source) is not None
+        except KodiError:
+            continue
+        if playing:
+            misses = 0
+        else:
+            misses += 1
+            if misses >= WATCH_MISSES:
+                give_up()
+                return
 
 
 def start(args):
@@ -174,19 +204,27 @@ def start(args):
             GstVideo.video_event_new_upstream_force_key_unit(Gst.CLOCK_TIME_NONE, True, 0)
         )
 
+    def give_up():
+        failure.append("Kodi spielt sie nicht mehr (dort gestoppt oder von einem "
+                       "anderen Gerät übernommen).")
+        GLib.idle_add(loop.quit)
+
+    def accompany():
+        catch_up(pipe, kodi, settings.port, stopped, force_keyframe, source)
+        watch(kodi, settings.port, source, stopped, give_up)
+
+    # Mit der eigenen Adresse nimmt das Addon nur die Pakete dieses Rechners an.
+    source = kodi.local_address()
     stopped = threading.Event()
     PID_FILE.parent.mkdir(parents=True, exist_ok=True)
     PID_FILE.write_text(str(os.getpid()))
     try:
         pipe.set_state(Gst.State.PLAYING)
         if settings.audio:
-            kodi.play(settings.port, settings.audio_port, args.audio_delay)
+            kodi.play(settings.port, settings.audio_port, args.audio_delay, source)
         else:
-            kodi.play(settings.port)
-        threading.Thread(
-            target=catch_up, daemon=True,
-            args=(pipe, kodi, settings.port, stopped, force_keyframe),
-        ).start()
+            kodi.play(settings.port, source=source)
+        threading.Thread(target=accompany, daemon=True).start()
         print(f"Übertrage an {host}. Beenden mit Strg+C oder `kodi-screencast stop`.")
         loop.run()
     finally:
@@ -195,12 +233,15 @@ def start(args):
         pipe.set_state(Gst.State.NULL)
         screencast.close()
         try:
-            kodi.stop(settings.port)
+            kodi.stop(settings.port, source)
         except KodiError as error:
             print(f"Kodi-Wiedergabe nicht gestoppt: {error}", file=sys.stderr)
 
     if failure:
         sys.exit(f"Übertragung abgebrochen: {failure[0]}")
+
+
+OTHER_CAST_EXIT = 3
 
 
 def stop(_args):
@@ -212,11 +253,18 @@ def stop(_args):
 
 
 def playing(args):
-    """Nennt, was Kodi gerade spielt; Exit-Code 0 nur, wenn dort etwas läuft."""
-    title = open_kodi(args).other_playback(args.port)
-    if title is None:
+    """Nennt, was Kodi gerade spielt; Exit-Code 0 nur, wenn dort etwas läuft.
+
+    Überträgt dort gerade ein anderes Gerät, ist der Exit-Code OTHER_CAST_EXIT.
+    """
+    kodi = open_kodi(args)
+    found = kodi.other_playback(args.port, kodi.local_address())
+    if found is None:
         sys.exit(1)
-    print(title)
+    if found is OTHER_CAST:
+        print("Übertragung eines anderen Geräts")
+        sys.exit(OTHER_CAST_EXIT)
+    print(found)
 
 
 def status(_args):

@@ -96,14 +96,38 @@ final class KodiClientTests: XCTestCase {
             KodiClient.pluginURL(port: 5004, audioPort: 5005, audioDelayMs: 350),
             "plugin://plugin.video.screencast/?port=5004&audio_port=5005&audio_delay=350")
         XCTAssertEqual(KodiClient.pluginURL(port: 5004), "plugin://plugin.video.screencast/?port=5004")
+        XCTAssertEqual(
+            KodiClient.pluginURL(port: 5004, audioPort: 5005, audioDelayMs: 350, source: "192.168.1.5"),
+            "plugin://plugin.video.screencast/?port=5004&source=192.168.1.5&audio_port=5005&audio_delay=350")
     }
 
     func testOwnStreamIsRecognisedInBothForms() {
-        XCTAssertTrue(KodiClient.isOwnStream("udp://@:5004?fifo_size=50000", port: 5004))
+        XCTAssertTrue(KodiClient.isOwnStream("udp://@:5004?fifo_size=50000", port: 5004, source: nil))
+        XCTAssertTrue(KodiClient.isOwnStream("udp://@:5004/?fifo_size=50000", port: 5004, source: nil))
         XCTAssertTrue(
-            KodiClient.isOwnStream(KodiClient.pluginURL(port: 5004, audioPort: 5005), port: 5004))
-        XCTAssertFalse(KodiClient.isOwnStream("udp://@:5005?x=1", port: 5004))
-        XCTAssertFalse(KodiClient.isOwnStream("/storage/film.mkv", port: 5004))
+            KodiClient.isOwnStream(
+                KodiClient.pluginURL(port: 5004, audioPort: 5005), port: 5004, source: nil))
+        XCTAssertFalse(KodiClient.isOwnStream("udp://@:5005?x=1", port: 5004, source: nil))
+        XCTAssertFalse(KodiClient.isOwnStream("/storage/film.mkv", port: 5004, source: nil))
+    }
+
+    func testCastOfAnotherDeviceIsNotTheOwnStream() {
+        let theirs = "udp://@:5004?overrun_nonfatal=1&fifo_size=50000&sources=192.168.1.5&audio_port=5005"
+        XCTAssertEqual(KodiClient.streamSource(theirs), "192.168.1.5")
+        XCTAssertTrue(KodiClient.isOwnStream(theirs, port: 5004, source: "192.168.1.5"))
+        XCTAssertFalse(KodiClient.isOwnStream(theirs, port: 5004, source: "192.168.1.6"))
+        XCTAssertFalse(
+            KodiClient.isOwnStream(
+                KodiClient.pluginURL(port: 5004, source: "192.168.1.5"), port: 5004,
+                source: "192.168.1.6"))
+        // Ein Addon ohne Absenderfilter nennt keinen Absender.
+        XCTAssertTrue(
+            KodiClient.isOwnStream(
+                "udp://@:5004?overrun_nonfatal=1&fifo_size=50000", port: 5004, source: "192.168.1.6"))
+    }
+
+    func testLocalAddressIsTheOneFacingKodi() throws {
+        XCTAssertEqual(try KodiClient(host: "127.0.0.1").localAddress(), "127.0.0.1")
     }
 
     func testTitleFallsBackToLabelThenFileName() {

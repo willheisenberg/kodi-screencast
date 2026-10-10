@@ -15,6 +15,8 @@ PlasmoidItem {
     property string lastError: ""
     // Was Kodi gerade spielt, solange die Rückfrage zum Unterbrechen offen ist.
     property string interrupts: ""
+    // Die Rückfrage gilt der Übertragung eines anderen Geräts.
+    property bool takesOver: false
 
     readonly property string command: Plasmoid.configuration.command || "kodi-screencast"
     readonly property string statusCommand: command + " status"
@@ -109,8 +111,11 @@ PlasmoidItem {
             Layout.fillWidth: true
             Layout.margins: Kirigami.Units.largeSpacing
             wrapMode: Text.WordWrap
-            text: "Auf Kodi läuft gerade „" + root.interrupts + "“. Für die Übertragung unterbrechen? "
-                + "Danach läuft es an derselben Stelle weiter."
+            text: root.takesOver
+                ? "Auf Kodi überträgt gerade ein anderes Gerät. Die Übertragung übernehmen? "
+                    + "Das andere Gerät hört dann auf."
+                : "Auf Kodi läuft gerade „" + root.interrupts + "“. Für die Übertragung unterbrechen? "
+                    + "Danach läuft es an derselben Stelle weiter."
         }
         RowLayout {
             Layout.alignment: Qt.AlignRight
@@ -147,7 +152,10 @@ PlasmoidItem {
                     root.switching = false
                 root.running = now
             } else if (source === root.kodiCommand("playing")) {
-                if (data["exit code"] === 0 && data.stdout.trim()) {
+                // Exit-Code 3: Auf Kodi überträgt ein anderes Gerät.
+                var code = data["exit code"]
+                if ((code === 0 || code === 3) && data.stdout.trim()) {
+                    root.takesOver = code === 3
                     root.interrupts = data.stdout.trim()
                     root.expanded = true
                 } else {

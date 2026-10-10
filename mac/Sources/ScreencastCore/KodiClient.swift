@@ -8,6 +8,13 @@ public struct KodiError: LocalizedError {
     }
 }
 
+/// Was ein Start der Übertragung auf Kodi unterbräche.
+public enum Interruption: Equatable {
+    case playback(title: String)
+    /// Die Übertragung eines anderen Geräts.
+    case otherCast
+}
+
 /// JSON-RPC-Client für Kodis Fernsteuer-Schnittstelle (HTTP).
 public final class KodiClient {
     public static let addonID = "plugin.video.screencast"
@@ -27,16 +34,79 @@ public final class KodiClient {
         }
     }
 
-    public static func pluginURL(port: Int, audioPort: Int? = nil, audioDelayMs: Int = 0) -> String {
+    public static func pluginURL(
+        port: Int, audioPort: Int? = nil, audioDelayMs: Int = 0, source: String? = nil
+    ) -> String {
         var url = "plugin://\(addonID)/?port=\(port)"
+        if let source {
+            // Mit der Adresse nimmt das Addon nur die Pakete dieses Rechners an.
+            url += "&source=\(source)"
+        }
         if let audioPort {
             url += "&audio_port=\(audioPort)&audio_delay=\(audioDelayMs)"
         }
         return url
     }
 
-    public static func isOwnStream(_ file: String, port: Int) -> Bool {
-        file.hasPrefix("udp://@:\(port)?") || file.hasPrefix(pluginURL(port: port))
+    /// Kodi spielt einen Screencast auf diesem Port, von welchem Gerät auch immer.
+    public static func isScreencast(_ file: String, port: Int) -> Bool {
+        file.hasPrefix("udp://@:\(port)/?") || file.hasPrefix("udp://@:\(port)?")
+            || file.hasPrefix(pluginURL(port: port))
+    }
+
+    /// Absenderadresse, auf die das Addon den Strom beschränkt hat, sonst nil.
+    public static func streamSource(_ file: String) -> String? {
+        let parts = file.split(separator: "?", maxSplits: 1)
+        guard parts.count == 2 else { return nil }
+        var params: [String: String] = [:]
+        for pair in parts[1].split(separator: "&") {
+            let entry = pair.split(separator: "=", maxSplits: 1)
+            if entry.count == 2 {
+                params[String(entry[0])] = String(entry[1])
+            }
+        }
+        // "sources" heißt die Angabe in der Stream-Adresse, "source" in der Plugin-Adresse.
+        return params["sources"] ?? params["source"]
+    }
+
+    /// Der Strom einer laufenden eigenen Übertragung. Ein Addon ohne
+    /// Absenderfilter nennt keinen Absender; dann gilt jeder Screencast auf
+    /// dem Port als der eigene.
+    public static func isOwnStream(_ file: String, port: Int, source: String?) -> Bool {
+        guard isScreencast(file, port: port) else { return false }
+        guard let named = streamSource(file) else { return true }
+        return named == source
+    }
+
+    /// Die eigene IP-Adresse, wie Kodi sie als Absender der Pakete sieht.
+    public func localAddress() -> String? {
+        guard let host = url.host else { return nil }
+        var hints = addrinfo()
+        hints.ai_family = AF_INET
+        hints.ai_socktype = SOCK_DGRAM
+        var result: UnsafeMutablePointer<addrinfo>?
+        guard getaddrinfo(host, "9", &hints, &result) == 0, let info = result else { return nil }
+        defer { freeaddrinfo(result) }
+        let handle = socket(AF_INET, SOCK_DGRAM, 0)
+        guard handle >= 0 else { return nil }
+        defer { close(handle) }
+        // Legt nur den Weg fest, sendet nichts.
+        guard connect(handle, info.pointee.ai_addr, info.pointee.ai_addrlen) == 0 else {
+            return nil
+        }
+        var local = sockaddr_in()
+        var length = socklen_t(MemoryLayout<sockaddr_in>.size)
+        let status = withUnsafeMutablePointer(to: &local) { pointer in
+            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                getsockname(handle, $0, &length)
+            }
+        }
+        guard status == 0 else { return nil }
+        var text = [CChar](repeating: 0, count: Int(INET_ADDRSTRLEN))
+        guard inet_ntop(AF_INET, &local.sin_addr, &text, socklen_t(INET_ADDRSTRLEN)) != nil else {
+            return nil
+        }
+        return String(cString: text)
     }
 
     public func call(_ method: String, _ params: [String: Any]? = nil) async throws -> Any {
@@ -84,13 +154,14 @@ public final class KodiClient {
         return addon["enabled"] as? Bool ?? false
     }
 
-    public func play(port: Int, audioPort: Int?, audioDelayMs: Int) async throws {
-        let file = Self.pluginURL(port: port, audioPort: audioPort, audioDelayMs: audioDelayMs)
+    public func play(port: Int, audioPort: Int?, audioDelayMs: Int, source: String?) async throws {
+        let file = Self.pluginURL(
+            port: port, audioPort: audioPort, audioDelayMs: audioDelayMs, source: source)
         _ = try await call("Player.Open", ["item": ["file": file]])
     }
 
     /// Kennung des Players, der gerade den eigenen Stream spielt.
-    private func ownPlayer(port: Int) async throws -> Int? {
+    private func ownPlayer(port: Int, source: String?) async throws -> Int? {
         guard let players = try await call("Player.GetActivePlayers") as? [[String: Any]] else {
             return nil
         }
@@ -99,15 +170,15 @@ public final class KodiClient {
             let params: [String: Any] = ["playerid": id, "properties": ["file"]]
             let answer = try await call("Player.GetItem", params) as? [String: Any]
             let item = answer?["item"] as? [String: Any]
-            if Self.isOwnStream(item?["file"] as? String ?? "", port: port) {
+            if Self.isOwnStream(item?["file"] as? String ?? "", port: port, source: source) {
                 return id
             }
         }
         return nil
     }
 
-    /// Titel dessen, was Kodi gerade außer dem eigenen Stream spielt, sonst nil.
-    public func otherPlayback(port: Int) async throws -> String? {
+    /// Was ein Start unterbräche; nil, wenn auf Kodi nichts Fremdes läuft.
+    public func otherPlayback(port: Int, source: String?) async throws -> Interruption? {
         guard let players = try await call("Player.GetActivePlayers") as? [[String: Any]] else {
             return nil
         }
@@ -117,8 +188,14 @@ public final class KodiClient {
             let answer = try await call("Player.GetItem", params) as? [String: Any]
             guard let item = answer?["item"] as? [String: Any] else { continue }
             let file = item["file"] as? String ?? ""
-            if !Self.isOwnStream(file, port: port) {
-                return Self.title(of: item)
+            if !Self.isScreencast(file, port: port) {
+                return .playback(title: Self.title(of: item))
+            }
+            // Vor dem Start ist nur ein Strom mit der eigenen Adresse der eigene
+            // (ein Rest eines früheren Laufs); einer ohne Absender stammt von
+            // einem älteren Sender.
+            if source == nil || Self.streamSource(file) != source {
+                return .otherCast
             }
         }
         return nil
@@ -136,8 +213,8 @@ public final class KodiClient {
     }
 
     /// Sekunden, die der eigene Stream schon spielt; nil, solange er nicht läuft.
-    public func playbackTime(port: Int) async throws -> Double? {
-        guard let id = try await ownPlayer(port: port) else { return nil }
+    public func playbackTime(port: Int, source: String?) async throws -> Double? {
+        guard let id = try await ownPlayer(port: port, source: source) else { return nil }
         let params: [String: Any] = ["playerid": id, "properties": ["time"]]
         guard let answer = try await call("Player.GetProperties", params) as? [String: Any],
             let time = answer["time"] as? [String: Any]
@@ -148,8 +225,8 @@ public final class KodiClient {
     }
 
     /// Stoppt die Wiedergabe nur, wenn noch der eigene Stream läuft.
-    public func stop(port: Int) async throws {
-        if let id = try await ownPlayer(port: port) {
+    public func stop(port: Int, source: String?) async throws {
+        if let id = try await ownPlayer(port: port, source: source) {
             _ = try await call("Player.Stop", ["playerid": id])
         }
     }

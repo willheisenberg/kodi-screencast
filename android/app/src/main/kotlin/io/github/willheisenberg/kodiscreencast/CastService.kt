@@ -73,9 +73,16 @@ class CastService : Service() {
                     object : MediaProjection.Callback() {
                         override fun onStop() = shutDown(State.Idle)
                     }, main)
-                val session = CastSession(this, settings, projection) { message ->
-                    main.post { shutDown(State.Failed(message)) }
-                }
+                val session = CastSession(
+                    this, settings, projection,
+                    onFailure = { message -> main.post { shutDown(State.Failed(message)) } },
+                    onDisplaced = {
+                        main.post {
+                            Toast.makeText(this, R.string.displaced, Toast.LENGTH_LONG).show()
+                            shutDown(State.Idle)
+                        }
+                    },
+                )
                 this.session = session
                 session.start()
                 main.post { if (!stopping) CastState.set(State.Running) }

@@ -28,7 +28,7 @@ class FakeKodi:
     def __init__(self, times):
         self.times = iter(times)
 
-    def playback_time(self, _port):
+    def playback_time(self, _port, _source=None):
         value = next(self.times)
         if isinstance(value, Exception):
             raise value
@@ -106,3 +106,27 @@ def test_host_given_on_the_command_line_is_remembered(tmp_path, monkeypatch):
 
 def test_pid_file_never_falls_back_to_tmp():
     assert not str(cli.PID_FILE).startswith("/tmp/")
+
+
+class Clock:
+    """Ersetzt das Warten des Wächters: jeder Blick ist sofort fällig."""
+
+    def wait(self, _seconds):
+        return False
+
+
+def test_watch_gives_up_once_kodi_no_longer_plays_the_cast():
+    calls = []
+    kodi = FakeKodi([None, 0.5, 3.0, None, 8.0, None, KodiError("weg"), None])
+    cli.watch(kodi, 5004, "192.168.1.5", Clock(), lambda: calls.append("give up"))
+    # Einmal fehlen reicht nicht, ein Verbindungsfehler zählt nicht mit.
+    assert calls == ["give up"]
+    assert next(kodi.times, "leer") == "leer"
+
+
+def test_watch_gives_up_on_a_cast_taken_over_before_it_was_seen():
+    calls = []
+    kodi = FakeKodi([None, None, 5.0])
+    cli.watch(kodi, 5004, "192.168.1.5", Clock(), lambda: calls.append("give up"))
+    assert calls == ["give up"]
+    assert next(kodi.times) == 5.0

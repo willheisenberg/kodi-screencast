@@ -27,6 +27,10 @@
     <string name="interrupt_title">Auf Kodi läuft gerade „%1$s“.</string>
     <string name="interrupt_message">Für die Übertragung unterbrechen? Danach läuft es an derselben Stelle weiter.</string>
     <string name="interrupt_confirm">Unterbrechen</string>
+    <string name="takeover_title">Auf Kodi überträgt gerade ein anderes Gerät.</string>
+    <string name="takeover_message">Die Übertragung übernehmen? Das andere Gerät hört dann auf.</string>
+    <string name="takeover_confirm">Übernehmen</string>
+    <string name="displaced">Kodi spielt die Übertragung nicht mehr.</string>
     <string name="cancel">Abbrechen</string>
     <string name="ok">OK</string>
     <string name="channel_name">Übertragung</string>

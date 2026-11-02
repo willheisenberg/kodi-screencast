@@ -121,7 +121,7 @@ def main():
     audio = Audio()
     interruption = resume.Interruption()
     player = Player(interruption)
-    known_file, known_item = "", None
+    known_file, known_item, last_playback = "", None, None
     cast_port = stream.DEFAULT_PORT
     try:
         while not monitor.waitForAbort(0.25):
@@ -141,7 +141,10 @@ def main():
             elif file:
                 if file != known_file:
                     known_file, known_item = file, playing_item()
-                playback = {"item": known_item, "position": position, "live": live}
+                playback = resume.settle(
+                    last_playback, {"item": known_item, "position": position, "live": live}
+                )
+            last_playback = playback
 
             interrupted = interruption.observe(playback, casting, time.monotonic())
             if not interrupted:

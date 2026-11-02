@@ -63,6 +63,24 @@ class Interruption:
         return None
 
 
+def settle(previous, current):
+    """Hält Angaben fest, die Kodi beim Umschalten kurz verliert.
+
+    Während ein Screencast die Wiedergabe verdrängt, meldet Kodi für sie
+    mitunter Länge und Position 0; ein Video sähe dann wie ein Livestream
+    aus und würde von vorn beginnen. Was einmal eine Länge hatte, bleibt
+    deshalb kein Livestream, und Position 0 gilt nur, wenn vorher keine
+    bekannt war.
+    """
+    if not previous or not current or previous["item"] != current["item"]:
+        return current
+    return {
+        **current,
+        "live": previous["live"] and current["live"],
+        "position": current["position"] or previous["position"],
+    }
+
+
 def open_params(playback):
     """Parameter für Player.Open, die die Wiedergabe an alter Stelle fortsetzen.
 

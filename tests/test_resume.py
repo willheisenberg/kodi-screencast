@@ -1,4 +1,4 @@
-from resources.lib.resume import Interruption, open_params
+from resources.lib.resume import Interruption, open_params, settle
 
 FILM = {"item": {"id": 84, "type": "movie", "file": "/media/film.mkv"}, "position": 600.5, "live": False}
 
@@ -78,3 +78,19 @@ def test_live_sources_restart_without_a_position():
 def test_nothing_to_open_without_id_or_file():
     assert open_params({"item": {"type": "unknown"}, "position": 1.0}) is None
     assert open_params({"item": None, "position": 1.0}) is None
+
+
+def test_a_video_does_not_turn_into_a_live_stream_while_kodi_switches():
+    item = {"file": "plugin://plugin.video.youtube/play/?video_id=x", "type": "unknown"}
+    playing = {"item": item, "position": 35.0, "live": False}
+    switching = settle(playing, {"item": item, "position": 0.0, "live": True})
+    assert switching == playing
+    assert open_params(switching)["options"]["resume"]["seconds"] == 32
+
+
+def test_settle_starts_over_for_another_item():
+    before = {"item": {"file": "a.mkv"}, "position": 35.0, "live": False}
+    radio = {"item": {"channelid": 1, "type": "channel"}, "position": 0.0, "live": True}
+    assert settle(before, radio) == radio
+    assert settle(None, radio) == radio
+    assert settle(before, None) is None
